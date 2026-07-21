@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path android:pathData="M0,0h108v108h-108z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="12"
+                android:startY="12"
+                android:endX="96"
+                android:endY="96"
+                android:type="linear">
+                <item android:offset="0" android:color="#2D6CDF" />
+                <item android:offset="0.58" android:color="#182A66" />
+                <item android:offset="1" android:color="#0B1026" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <path
+        android:fillColor="#223E98"
+        android:fillAlpha="0.5"
+        android:pathData="M15,14h78a15,15 0,0 1,15 15v50a15,15 0,0 1,-15 15h-78z" />
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M25,28h34"
+        android:strokeColor="#99FFFFFF"
+        android:strokeWidth="7"
+        android:strokeLineCap="round" />
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M25,43h42"
+        android:strokeColor="#CCFFFFFF"
+        android:strokeWidth="7"
+        android:strokeLineCap="round" />
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M25,58h28"
+        android:strokeColor="#99FFFFFF"
+        android:strokeWidth="7"
+        android:strokeLineCap="round" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M67,30h8v39h-8z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M73,30l18,6v9l-18,-6z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M55,74a12,10 0,1 0,24 0a12,10 0,1 0,-24 0" />
+    <path
+        android:fillColor="#61D8FF"
+        android:pathData="M77,77a6,5 0,1 0,12 0a6,5 0,1 0,-12 0" />
+</vector>

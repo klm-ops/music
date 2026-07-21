@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>三一音乐</title>
+  <link rel="stylesheet" href="./styles.css?v=20260720-flex" />
+</head>
+<body>
+  <main class="shell" aria-label="音乐播放器">
+    <section class="player-panel" aria-labelledby="appTitle">
+      <nav class="tabs" aria-label="音乐来源">
+        <button class="tab" data-module="bluetooth" type="button">蓝牙音乐</button>
+        <button class="tab" data-module="radio" type="button">收音机</button>
+        <button class="tab" data-module="usb" type="button">U盘音乐</button>
+        <button class="tab is-active" data-module="local" type="button" aria-current="page">本地音乐</button>
+      </nav>
+
+      <div class="hero module-panel is-active" id="localModule">
+        <div class="album-container">
+          <div class="album-wrap" id="dropZone">
+            <img class="album-art" src="./assets/album-cover.png" srcset="./assets/album-cover.png 1x, ./assets/album-cover.png 2x" sizes="(max-width: 767px) 42vw, (max-width: 1199px) 28vw, 220px" alt="专辑封面" />
+            <div class="drop-hint">
+              <strong>拖拽音频到这里</strong>
+              <span>支持 MP3 / WAV / OGG / M4A / LRC</span>
+            </div>
+          </div>
+          <div class="track-meta">
+            <h2 id="trackTitle">See You Again</h2>
+            <p id="trackArtist">Charlie Puth</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="visualizer-row module-panel is-active" id="localVisualizer">
+        <canvas class="audio-visualizer" aria-hidden="true"></canvas>
+      </div>
+
+      <div class="side-actions">
+        <button class="track-action-button" id="favoritePanelBtn" type="button" title="收藏列表" aria-controls="favoritePanel" aria-expanded="false">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+        </button>
+        <button class="track-action-button" id="playlistPanelBtn" type="button" title="播放列表" aria-controls="playlistPanel" aria-expanded="false">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
+        </button>
+      </div>
+
+      <section class="transport module-panel is-active" id="localTransport" aria-label="本地音乐播放控制">
+        <div class="progress-row">
+          <span id="currentTime">0:00</span>
+          <input id="progress" class="range progress" type="range" min="0" max="100" value="0" step="0.1" aria-label="播放进度" />
+          <span id="duration">0:00</span>
+        </div>
+        <div class="controls">
+          <button class="icon-button favorite-toggle" id="favoriteToggleBtn" type="button" title="收藏当前曲目" aria-pressed="false">♡</button>
+          <button class="icon-button" id="prevBtn" type="button" title="上一首">◀</button>
+          <button class="play-button" id="playPauseBtn" type="button" title="播放/暂停" aria-pressed="false">
+          <span class="play-icon" aria-hidden="true">▶</span>
+          <span class="pause-icon" aria-hidden="true">❚❚</span>
+        </button>
+          <button class="icon-button" id="nextBtn" type="button" title="下一首">▶</button>
+          <button class="icon-button play-mode-button" id="repeatBtn" type="button" title="顺序播放" aria-label="顺序播放" aria-pressed="false"><span class="sequence-icon" aria-hidden="true"><i></i><i></i><i></i></span></button>
+          <button class="visually-hidden" id="shuffleBtn" type="button" title="随机播放" aria-pressed="false" tabindex="-1">Shuffle</button>
+          <button class="visually-hidden" id="stopBtn" type="button" title="停止" tabindex="-1">Stop</button>
+        </div>
+        <div class="volume-row">
+          <span>音量</span>
+          <input id="volume" class="range" type="range" min="0" max="1" value="0.8" step="0.01" aria-label="音量" />
+          <strong id="volumeValue">80%</strong>
+        </div>
+      </section>
+
+      <section class="feature-module usb-module module-panel" id="usbModule" aria-label="U盘音乐">
+        <div class="hero" id="usbHero">
+          <div class="album-container">
+            <div class="album-wrap" id="usbDropZone">
+              <img class="album-art" src="./assets/album-cover.png" srcset="./assets/album-cover.png 1x, ./assets/album-cover.png 2x" sizes="(max-width: 767px) 42vw, (max-width: 1199px) 28vw, 220px" alt="专辑封面" />
+              <div class="drop-hint">
+                <strong>等待USB设备连接</strong>
+                <span>支持 MP3 / WAV / OGG / M4A</span>
+              </div>
+            </div>
+            <div class="track-meta">
+              <h2 id="usbTrackTitle">未选择音乐</h2>
+              <p id="usbTrackMeta">等待USB设备连接</p>
+            </div>
+          </div>
+        </div>
+        <div class="visualizer-row" id="usbVisualizer">
+          <canvas class="audio-visualizer" aria-hidden="true"></canvas>
+        </div>
+        <section class="transport module-panel" id="usbTransport" aria-label="U盘音乐播放控制">
+          <div class="progress-row">
+            <span id="usbCurrentTime">0:00</span>
+            <input id="usbProgress" class="range progress" type="range" min="0" max="100" value="0" step="0.1" aria-label="U盘播放进度" />
+            <span id="usbDuration">0:00</span>
+          </div>
+          <div class="controls">
+            <button class="icon-button favorite-toggle" id="usbFavoriteToggleBtn" type="button" title="收藏当前曲目" aria-pressed="false">♡</button>
+            <button class="icon-button" id="usbPrevBtn" type="button" title="上一首">◀</button>
+            <button class="play-button" id="usbPlayBtn" type="button" title="播放/暂停" aria-pressed="false">
+              <span class="play-icon" aria-hidden="true">▶</span>
+              <span class="pause-icon" aria-hidden="true">❚❚</span>
+            </button>
+            <button class="icon-button" id="usbNextBtn" type="button" title="下一首">▶</button>
+            <button class="icon-button play-mode-button" id="usbPlayModeBtn" type="button" title="顺序播放" aria-label="顺序播放" aria-pressed="false"><span class="sequence-icon" aria-hidden="true"><i></i><i></i><i></i></span></button>
+            <button class="visually-hidden" id="usbStopBtn" type="button" title="停止" tabindex="-1">Stop</button>
+          </div>
+          <div class="volume-row">
+            <span>音量</span>
+            <input id="usbVolume" class="range" type="range" min="0" max="1" value="0.8" step="0.01" aria-label="U盘音量" />
+            <strong id="usbVolumeValue">80%</strong>
+          </div>
+        </section>
+      </section>
+      <section class="feature-module bluetooth-module module-panel" id="bluetoothModule" aria-label="蓝牙音乐">
+        <div class="bluetooth-stage" role="group" aria-label="蓝牙音乐控制台">
+          <div class="bluetooth-offline" id="btOfflinePanel">
+            <img src="./assets/bluetooth/bt-offline.png" alt="蓝牙未连接" />
+            <p>蓝牙音频尚未连接</p>
+            <button class="bluetooth-open-button" id="btScanBtn" type="button">搜索蓝牙</button>
+          </div>
+          <div class="bluetooth-player" id="btPlayerPanel">
+            <div class="bluetooth-album">
+              <img src="./assets/bluetooth/bt-album.png" alt="蓝牙音乐封面" />
+            </div>
+            <h2 id="btNowPlaying">Bluetooth device not connected</h2>
+            <p id="btDeviceMeta">Connect a device to use playback controls</p>
+            <div class="bluetooth-track-meta"><span id="btArtist">Bluetooth Audio</span><span id="btAlbum">External Device</span></div>
+            <div class="visualizer-row" id="btVisualizer">
+              <canvas class="audio-visualizer" aria-hidden="true"></canvas>
+            </div>
+            <div class="bluetooth-progress">
+              <span id="btElapsed">0:00</span>
+              <div class="bluetooth-progress-track" id="btProgressTrack" role="slider" aria-label="蓝牙播放进度" aria-valuemin="0" aria-valuemax="232" aria-valuenow="0" tabindex="0"><i id="btProgressNeedle"></i></div>
+              <span id="btDuration">--:--</span>
+            </div>
+            <div class="feature-controls bluetooth-controls">
+              <button class="icon-button" id="btPrevBtn" type="button" aria-label="上一首">Prev</button>
+              <button class="play-button small-play" id="btPlayBtn" type="button" aria-label="播放或暂停">
+                <span class="play-icon" aria-hidden="true">▶</span>
+                <span class="pause-icon" aria-hidden="true">❚❚</span>
+              </button>
+              <button class="icon-button" id="btNextBtn" type="button" aria-label="下一首">Next</button>
+            </div>
+            <div class="bluetooth-mode-row">
+              <button class="bluetooth-mode-button" id="btPlayModeBtn" type="button">全部循环</button>
+              <button class="bluetooth-mode-button" id="btDisconnectBtn" type="button">断开连接</button>
+            </div>
+            <div class="module-volume bluetooth-volume">
+              <input id="btVolume" class="range" type="range" min="0" max="1" value="0.7" step="0.01" aria-label="蓝牙音量" />
+              <strong id="btVolumeValue">70%</strong>
+            </div>
+          </div>
+          <p class="module-status bluetooth-status" id="btStatus">点击搜索蓝牙，查找可连接设备</p>
+          <div class="bluetooth-device-panel">
+            <div class="bluetooth-device-head"><span>可用设备</span><button class="bluetooth-refresh-button" id="btRefreshBtn" type="button">搜索设备</button></div>
+            <ol class="device-list" id="btDeviceList" aria-live="polite"></ol>
+          </div>
+        </div>
+      </section>
+
+      <section class="feature-module radio-module module-panel" id="radioModule" aria-label="收音机">
+        <div class="radio-stage" role="group" aria-label="收音机控制台">
+          <div class="radio-mode-row">
+            <div class="radio-band-switch" role="group" aria-label="收音机模式"><button class="is-active" id="radioFmBtn" type="button">FM</button><button id="radioAmBtn" type="button">AM</button></div>
+          </div>
+          <div class="radio-frequency-display"><span id="radioFrequency">87.0</span><div class="radio-meta-stack"><span id="radioStereo" class="stereo-icon" aria-hidden="true">ST</span><span id="radioSignal">3级</span><small id="radioUnit">MHz</small></div></div>
+          <div class="radio-program-info" aria-live="polite"><strong id="radioStationName">City FM</strong><span id="radioProgramName">Morning Live</span><small id="radioHostName">Host: Studio</small></div>
+          <div class="frequency-rail" aria-hidden="true"><span id="radioFreqMin">87.0</span><div class="frequency-track"><i id="radioNeedle"></i></div><span id="radioFreqMax">108.0</span></div>
+          <p class="module-status" id="radioStatus">收音机待机，点击播放开始调频</p>
+          <div class="radio-controls-row">
+            <button class="icon-button" id="radioFavoriteBtn" type="button" title="收藏当前电台" aria-pressed="false">
+              <img src="assets/radio/favorite.png" alt="收藏" width="48" height="48"/>
+            </button>
+            <div class="radio-controls-group">
+              <button class="icon-button" id="radioPrevStationBtn" type="button" title="上一台">
+                <img src="assets/radio/prev-station.png" alt="上一台" width="48" height="48"/>
+              </button>
+              <button class="icon-button" id="radioTuneDownBtn" type="button" title="微调频左">
+                <img src="assets/radio/tune-down.png" alt="微调频左" width="48" height="48"/>
+              </button>
+              <button class="play-button" id="radioPlayBtn" type="button" title="播放/暂停">
+                <img class="play-icon" src="assets/radio/play.png" alt="播放" width="56" height="56"/>
+                <div class="pause-icon" aria-hidden="true">
+                  <svg viewBox="0 0 70 70" width="56" height="56" fill="none">
+                    <circle cx="35" cy="35" r="35" fill="#2181FF"/>
+                    <path fill-rule="evenodd" clip-rule="evenodd" d="M28 20.571V48.8813C28 49.9173 29.1398 50.5496 30.0195 50.0001L35 47.0881V22.9119L30.0195 19.4521C29.1398 18.9026 28 19.535 28 20.571Z" fill="white"/>
+                    <path fill-rule="evenodd" clip-rule="evenodd" d="M42 20.571V48.8813C42 49.9173 43.1398 50.5496 44.0195 50.0001L49 47.0881V22.9119L44.0195 19.4521C43.1398 18.9026 42 19.535 42 20.571Z" fill="white"/>
+                  </svg>
+                </div>
+              </button>
+              <button class="icon-button" id="radioTuneUpBtn" type="button" title="微调频右">
+                <img src="assets/radio/tune-up.png" alt="微调频右" width="48" height="48"/>
+              </button>
+              <button class="icon-button" id="radioNextStationBtn" type="button" title="下一台">
+                <img src="assets/radio/next-station.png" alt="下一台" width="48" height="48"/>
+              </button>
+            </div>
+            <button class="icon-button" id="radioScanBtn" type="button" title="搜台">
+              <img src="assets/radio/scan.png" alt="搜台" width="48" height="48"/>
+            </button>
+          </div>
+          <div class="radio-list-container">
+            <div class="radio-list-head"><h3>电台列表</h3><span id="radioModeLabel">全部电台</span></div>
+            <div class="preset-grid" id="presetGrid" aria-live="polite"></div>
+          </div>
+          <div class="module-volume"><button class="radio-volume-step" id="radioVolumeDownBtn" type="button">-</button><span>音量</span><input id="radioVolume" class="range" type="range" min="0" max="1" value="0.6" step="0.01" aria-label="收音机音量" /><strong id="radioVolumeValue">60%</strong><button class="radio-volume-step" id="radioVolumeUpBtn" type="button">+</button></div>
+        </div>
+      </section>
+
+    </section>
+
+    <aside class="drawer-panel favorite-panel" id="favoritePanel" aria-labelledby="favoriteTitle" aria-hidden="true">
+      <div class="playlist-head"><div><p class="eyebrow">Favorite List</p><h2 id="favoriteTitle">收藏列表 <span id="favoriteCount">(0)</span></h2></div><button class="drawer-close" data-close-panel type="button" title="关闭收藏列表">×</button></div>
+      <ol class="playlist" id="favoriteList" aria-live="polite"></ol>
+    </aside>
+
+    <aside class="drawer-panel playlist-panel" id="playlistPanel" aria-labelledby="playlistTitle" aria-hidden="true">
+      <div class="playlist-head"><div><p class="eyebrow">Music List</p><h2 id="playlistTitle">音乐列表 <span id="trackCount">(0)</span></h2></div><label class="import-button" id="importButton">导入音乐<input id="fileInput" type="file" accept="audio/*,.mp3,.wav,.ogg,.m4a,.aac,.flac,.opus" multiple /></label><button class="scan-button" id="playlistScanBtn" type="button">扫描文件</button><button class="drawer-close" data-close-panel type="button" title="关闭播放列表">×</button></div>
+      <div class="playlist-tools"><input id="searchInput" type="search" placeholder="搜索歌曲或歌手" aria-label="搜索播放列表" /><button id="clearBtn" type="button">清空列表</button><button id="usbSortBtn" type="button" class="sort-button">排序</button></div>
+      <section class="import-progress-panel" id="importProgressPanel" aria-live="polite" aria-hidden="true"><div class="import-progress-head"><strong id="importProgressTitle">导入准备中</strong><span id="importProgressCount">0/0</span></div><div class="import-progress-bar" aria-hidden="true"><i id="importProgressFill"></i></div><ol class="import-status-list" id="importStatusList"></ol><div class="import-result" id="importResult" hidden><p id="importResultSummary"></p><ul id="importFailedList"></ul></div></section>
+      <ol class="playlist" id="playlist" aria-live="polite"></ol>
+      <footer class="tips"><span>Space 播放/暂停</span><span>← / → 快退快进</span><span>↑ / ↓ 调节音量</span></footer>
+    </aside>
+
+    <div class="usb-toast" id="usbToast" role="status" aria-live="polite"></div>
+    <button class="drawer-backdrop" id="drawerBackdrop" type="button" aria-label="关闭面板"></button>
+    <audio id="audio"></audio>
+    <script src="./app.js?v=20260721-final"></script>
+  </main>
+</body>
+</html>

@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title desc">
+  <title id="title">Single track repeat</title>
+  <desc id="desc">Loop arrows with a centered number one for single track repeat.</desc>
+  <g fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M17 21h25c8.8 0 16 7.2 16 16 0 4.3-1.7 8.2-4.5 11"/>
+    <path d="M47 10 58 21 47 32"/>
+    <path d="M47 43H22c-8.8 0-16-7.2-16-16 0-4.3 1.7-8.2 4.5-11"/>
+    <path d="M17 54 6 43l11-11"/>
+  </g>
+  <path fill="currentColor" d="M34.8 44h-6.4V27.3l-4.7 2.7v-6.2l6-3.8h5.1V44z"/>
+</svg>
