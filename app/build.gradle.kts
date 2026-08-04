@@ -31,7 +31,11 @@ android {
         targetCompatibility = JavaVersion.VERSION_11
     }
 }
-
+/*
+            storePassword = "123456"
+            keyAlias = "key0"
+            keyPassword = "123456"
+ */
 dependencies {
     implementation(libs.activity.ktx)
     implementation(libs.appcompat)

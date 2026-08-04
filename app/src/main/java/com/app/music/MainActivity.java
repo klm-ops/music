@@ -2,6 +2,8 @@ package com.app.music;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
 import android.bluetooth.BluetoothA2dp;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothClass;
@@ -14,6 +16,8 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
+import android.graphics.PixelFormat;
+import android.graphics.drawable.GradientDrawable;
 import android.hardware.usb.UsbManager;
 import android.media.AudioDeviceInfo;
 import android.media.AudioManager;
@@ -26,7 +30,13 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.provider.Settings;
+import android.telephony.PhoneStateListener;
+import android.telephony.TelephonyManager;
+import android.util.TypedValue;
+import android.view.Gravity;
 import android.view.KeyEvent;
+import android.view.View;
+import android.view.WindowManager;
 import android.webkit.JavascriptInterface;
 import android.webkit.ValueCallback;
 import android.webkit.GeolocationPermissions;
@@ -34,6 +44,7 @@ import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.widget.TextView;
 
 import androidx.activity.OnBackPressedCallback;
 import androidx.activity.result.ActivityResultLauncher;
@@ -41,6 +52,7 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.activity.EdgeToEdge;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.NotificationCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
@@ -61,6 +73,8 @@ import java.util.Set;
 
 public class MainActivity extends AppCompatActivity {
     private static final String PLAYER_URL = "file:///android_asset/player/index.html";
+    private static final String USB_NOTIFICATION_CHANNEL_ID = "usb_device_status";
+    private static final int USB_DISCONNECTED_NOTIFICATION_ID = 9001;
     private static final int PROFILE_A2DP_SINK = 11;
     private static final int PROFILE_AVRCP_CONTROLLER = 12;
     private static final int AVRCP_PASS_THROUGH_STATE_PRESS = 0;
@@ -104,10 +118,22 @@ public class MainActivity extends AppCompatActivity {
     private static final long BLUETOOTH_DISCOVERY_MAX_DURATION_MS = 15000L;
     private static final long BLUETOOTH_DEVICE_EXPIRY_MS = 60000L;
     private static final long BLUETOOTH_CONNECTION_STATUS_CHECK_INTERVAL_MS = 3000L;
+    private static final String BT_STATE_IDLE = "idle";
+    private static final String BT_STATE_DISCOVERING = "discovering";
+    private static final String BT_STATE_CONNECTING = "connecting";
+    private static final String BT_STATE_CONNECTED = "connected";
+    private static final String BT_STATE_PLAYING = "playing";
+    private static final String BT_STATE_PAUSED = "paused";
+    private static final String BT_STATE_DISCONNECTED = "disconnected";
+    private static final String BT_STATE_ERROR = "error";
     private static final long BLUETOOTH_RECONNECT_BACKOFF_BASE_MS = 1000L;
     private static final String[] USB_AUDIO_EXTENSIONS = {
-            ".aac", ".mp3", ".flac", ".ape", ".wav", ".wma", ".ogg", ".mpeg", ".mpg", ".mp2", ".mp1", ".m4a"
+            ".aac", ".mp3", ".flac", ".ape", ".wav", ".wma", ".ogg", ".mpeg", ".mpg", ".mp2", ".mp1",
+            ".m4a", ".m4b", ".opus", ".aiff", ".aif", ".dsf", ".dff", ".wv", ".tta", ".tak", ".mid", ".midi"
     };
+    private static final long USB_SCAN_PROGRESS_INTERVAL_MS = 200L;
+    private static final String USB_FAVORITES_SYNC_DIR = "usb_favorites";
+    private static final String USB_FAVORITES_INDEX_FILE = "favorites_index.json";
 
     private WebView musicWebView;
     @Nullable
@@ -149,6 +175,8 @@ public class MainActivity extends AppCompatActivity {
     private volatile boolean usbScanning = false;
     private volatile String usbMusicStateJson = "{\"connected\":false,\"scanning\":false,\"message\":\"USB设备未连接\",\"folders\":[],\"tracks\":[]}";
     private int usbScanToken = 0;
+    private final Map<String, JSONObject> persistedUsbFavorites = new LinkedHashMap<>();
+    private volatile boolean favoritesLoaded = false;
     private boolean localPlaybackPlaying = false;
     private String localPlaybackTitle = "三一音乐";
     private String localPlaybackArtist = "本地音乐";
@@ -169,6 +197,10 @@ public class MainActivity extends AppCompatActivity {
     private boolean bluetoothDiscoveryPending = false;
     private long bluetoothDiscoveryStartedAtMs = 0L;
     private boolean bluetoothScanningForAudioDevicesOnly = true;
+    private String bluetoothConnectionState = BT_STATE_IDLE;
+    private String bluetoothLastError = "";
+    private long bluetoothLastErrorAtMs = 0L;
+    private String bluetoothErrorRecoverySuggestion = "";
     private final JSONArray bluetoothConnectSamples = new JSONArray();
     private final Runnable bluetoothConnectionStatusCheckRunnable = new Runnable() {
         @Override
@@ -183,6 +215,16 @@ public class MainActivity extends AppCompatActivity {
         }
     };
 
+    @Nullable
+    private WindowManager windowManager;
+    @Nullable
+    private View bluetoothBackOverlay;
+    @Nullable
+    private TelephonyManager telephonyManager;
+    @Nullable
+    private PhoneStateListener phoneStateListener;
+    private boolean phoneCallActive = false;
+
     private final BroadcastReceiver usbReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -191,6 +233,7 @@ public class MainActivity extends AppCompatActivity {
                     || Intent.ACTION_MEDIA_CHECKING.equals(action)
                     || UsbManager.ACTION_USB_DEVICE_ATTACHED.equals(action)
                     || Intent.ACTION_MEDIA_SCANNER_STARTED.equals(action)) {
+                cancelUsbDisconnectedNotification();
                 if (!usbScanning) {
                     publishUsbEvent("connected", "USB\u8bbe\u5907\u5df2\u8fde\u63a5");
                     startUsbScanAsync();
@@ -204,6 +247,7 @@ public class MainActivity extends AppCompatActivity {
                 usbScanning = false;
                 usbMusicStateJson = createUsbDisconnectedJson("USB \u8bbe\u5907\u5df2\u65ad\u5f00");
                 publishUsbEvent("disconnected", "USB \u8bbe\u5907\u5df2\u65ad\u5f00");
+                showUsbDisconnectedNotification();
             }
         }
     };
@@ -434,6 +478,34 @@ public class MainActivity extends AppCompatActivity {
                 publishBluetoothPlaybackState();
             } else if (ACTION_VOLUME_CHANGED.equals(action)) {
                 publishBluetoothPlaybackState();
+                publishSystemVolumeState();
+            } else if (BluetoothAdapter.ACTION_STATE_CHANGED.equals(action)) {
+                int btState = intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, BluetoothAdapter.ERROR);
+                if (btState == BluetoothAdapter.STATE_ON) {
+                    publishBluetoothEvent("\u84dd\u7259\u5df2\u5f00\u542f");
+                    bluetoothHandler.postDelayed(() -> {
+                        ensureA2dpProxy();
+                        checkSystemConnectedBluetoothDevices();
+                        publishBluetoothEvent("\u84dd\u7259\u72b6\u6001\u5df2\u66f4\u65b0");
+                    }, 500);
+                } else if (btState == BluetoothAdapter.STATE_OFF) {
+                    if (confirmedBluetoothAudioAddress.length() > 0) {
+                        BluetoothDevice device = getRemoteDevice(confirmedBluetoothAudioAddress);
+                        if (device != null) {
+                            recordBluetoothDisconnect(device);
+                        }
+                        confirmedBluetoothAudioAddress = "";
+                        markBluetoothPlaybackDisconnected();
+                    }
+                    stopBluetoothConnectionStatusChecker();
+                    clearAllBluetoothAutoReconnect();
+                    publishBluetoothEvent("\u84dd\u7259\u5df2\u5173\u95ed");
+                } else if (btState == BluetoothAdapter.STATE_TURNING_ON) {
+                    publishBluetoothEvent("\u84dd\u7259\u6b63\u5728\u5f00\u542f...");
+                } else if (btState == BluetoothAdapter.STATE_TURNING_OFF) {
+                    publishBluetoothEvent("\u84dd\u7259\u6b63\u5728\u5173\u95ed...");
+                }
+                publishBluetoothPlaybackState();
             }
         }
     };
@@ -455,13 +527,12 @@ public class MainActivity extends AppCompatActivity {
         configureWebView();
         configureBackNavigation();
         configureBluetooth();
+        configurePhoneStateListener();
         registerUsbReceiver();
         registerPlaybackControlReceiver();
         requestAudioPermissionIfNeeded();
+        requestPhoneStatePermissionIfNeeded();
         musicWebView.loadUrl(PLAYER_URL);
-        if (!findUsbRoots().isEmpty()) {
-            startUsbScanAsync();
-        }
     }
 
     @Override
@@ -473,7 +544,28 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
+        hideBluetoothBackOverlay();
         checkSystemConnectedBluetoothDevices();
+        if (!findUsbRoots().isEmpty() && !isUsbStateConnected()) {
+            startUsbScanAsync();
+        }
+        if (bluetoothAdapter != null && bluetoothAdapter.isEnabled()) {
+            boolean hasConnectedDevice = !getConnectedProfileDevices(bluetoothA2dp).isEmpty()
+                    || !getConnectedProfileDevices(bluetoothA2dpSink).isEmpty();
+            if (!hasConnectedDevice && confirmedBluetoothAudioAddress.length() == 0) {
+                bluetoothHandler.postDelayed(() -> {
+                    if (!hasBluetoothConnectPermission() || !hasBluetoothScanPermission()) {
+                        return;
+                    }
+                    checkSystemConnectedBluetoothDevices();
+                    if (confirmedBluetoothAudioAddress.length() == 0
+                            && getConnectedProfileDevices(bluetoothA2dp).isEmpty()
+                            && getConnectedProfileDevices(bluetoothA2dpSink).isEmpty()) {
+                        startBluetoothDiscoveryInternal();
+                    }
+                }, 1500);
+            }
+        }
         evaluatePlayerScript("window.onNativeAppResume&&window.onNativeAppResume();");
     }
 
@@ -500,6 +592,9 @@ public class MainActivity extends AppCompatActivity {
                 super.onPageFinished(view, url);
                 injectSafeAreaCssVariables();
                 applyStatusBarTheme(statusBarLightBackground);
+                if (!findUsbRoots().isEmpty()) {
+                    startUsbScanAsync();
+                }
             }
         });
         musicWebView.addJavascriptInterface(new MusicBridge(), "MusicBridge");
@@ -807,6 +902,7 @@ public class MainActivity extends AppCompatActivity {
         bluetoothHandler.postDelayed(this::checkSystemConnectedBluetoothDevices, 2000);
 
         IntentFilter filter = new IntentFilter();
+        filter.addAction(BluetoothAdapter.ACTION_STATE_CHANGED);
         filter.addAction(BluetoothAdapter.ACTION_DISCOVERY_STARTED);
         filter.addAction(BluetoothAdapter.ACTION_DISCOVERY_FINISHED);
         filter.addAction(BluetoothDevice.ACTION_FOUND);
@@ -1085,6 +1181,7 @@ public class MainActivity extends AppCompatActivity {
         lastBluetoothConnectDurationMs = -1L;
         lastBluetoothConnectAddress = device == null ? "" : device.getAddress();
         lastBluetoothConnectResult = "connecting";
+        setBluetoothConnectionState(BT_STATE_CONNECTING);
     }
 
     private String completeBluetoothConnectSuccess(BluetoothDevice device, String message) {
@@ -1096,6 +1193,8 @@ public class MainActivity extends AppCompatActivity {
         confirmedBluetoothConnectedAtMs = now;
         bluetoothConnectSuccessCount += 1;
         clearBluetoothAutoReconnect();
+        clearBluetoothError();
+        setBluetoothConnectionState(BT_STATE_CONNECTED);
         addBluetoothConnectSample(lastBluetoothConnectResult, lastBluetoothConnectAddress, elapsed, message);
         startBluetoothConnectionStatusChecker();
         return elapsed > 0L ? message + "\uff08\u8017\u65f6 " + elapsed + "ms\uff09" : message;
@@ -1108,6 +1207,9 @@ public class MainActivity extends AppCompatActivity {
         lastBluetoothConnectAddress = device == null ? lastBluetoothConnectAddress : device.getAddress();
         lastBluetoothConnectResult = "failed";
         bluetoothConnectFailureCount += 1;
+        setBluetoothConnectionState(BT_STATE_ERROR);
+        String suggestion = buildBluetoothRecoverySuggestion(reason);
+        recordBluetoothError(reason, suggestion);
         addBluetoothConnectSample("failed", lastBluetoothConnectAddress, elapsed, reason);
         if (device != null
                 && !userInitiatedBluetoothDisconnect
@@ -1115,6 +1217,31 @@ public class MainActivity extends AppCompatActivity {
                 && bluetoothAutoReconnectAttempts < BLUETOOTH_AUTO_RECONNECT_MAX_ATTEMPTS) {
             scheduleBluetoothAutoReconnect(device, reason);
         }
+    }
+
+    private String buildBluetoothRecoverySuggestion(String reason) {
+        if (reason == null || reason.isEmpty()) {
+            return "请靠近蓝牙设备后重试连接";
+        }
+        if (reason.contains("权限") || reason.contains("系统限制")) {
+            return "请在系统设置中授予蓝牙连接权限，然后重新打开应用";
+        }
+        if (reason.contains("超时") || reason.contains("timeout")) {
+            return "请确认设备已开启蓝牙且在有效范围内，然后重试连接";
+        }
+        if (reason.contains("配对") || reason.contains("bond")) {
+            return "请在系统蓝牙设置中完成设备配对，然后返回应用重试";
+        }
+        if (reason.contains("未开启") || reason.contains("未连接")) {
+            return "请先开启手机蓝牙并确保设备已配对";
+        }
+        if (reason.contains("已断开") || reason.contains("disconnect")) {
+            return "蓝牙连接已断开，系统将尝试自动重连，若多次失败请手动重新连接";
+        }
+        if (reason.contains("设备引用") || reason.contains("失效")) {
+            return "请重启应用以重新初始化蓝牙设备引用";
+        }
+        return "请靠近蓝牙设备，确认设备已开启蓝牙且在有效范围内，然后重试连接";
     }
 
     private void recordBluetoothDisconnect(@Nullable BluetoothDevice device) {
@@ -1126,6 +1253,7 @@ public class MainActivity extends AppCompatActivity {
         bluetoothDisconnectCount += 1;
         String address = device == null ? confirmedBluetoothAudioAddress : device.getAddress();
         lastBluetoothConnectResult = "disconnected";
+        setBluetoothConnectionState(BT_STATE_DISCONNECTED);
         stopBluetoothConnectionStatusChecker();
         if (device != null) {
             scheduleBluetoothAutoReconnect(device, "音频链路断开");
@@ -1192,6 +1320,16 @@ public class MainActivity extends AppCompatActivity {
             result.put("a2dpReady", bluetoothA2dp != null);
             result.put("a2dpSinkReady", bluetoothA2dpSink != null);
             result.put("a2dpSinkConnectedCount", getConnectedProfileDevices(bluetoothA2dpSink).size());
+            result.put("connectionState", bluetoothConnectionState);
+            result.put("lastError", bluetoothLastError);
+            result.put("lastErrorAtMs", bluetoothLastErrorAtMs);
+            result.put("errorRecoverySuggestion", bluetoothErrorRecoverySuggestion);
+            result.put("autoReconnectAddress", bluetoothAutoReconnectAddress);
+            result.put("autoReconnectAttempts", bluetoothAutoReconnectAttempts);
+            result.put("autoReconnectMaxAttempts", BLUETOOTH_AUTO_RECONNECT_MAX_ATTEMPTS);
+            result.put("pendingConnectAddress", pendingBluetoothConnectAddress);
+            result.put("pendingConnectAttempts", pendingBluetoothConnectAttempts);
+            result.put("confirmedAudioAddress", confirmedBluetoothAudioAddress);
         } catch (Exception ignored) {
             return "{\"available\":false,\"enabled\":false}";
         }
@@ -1215,6 +1353,20 @@ public class MainActivity extends AppCompatActivity {
         String state = bluetoothPlaybackStateJson();
         musicWebView.post(() -> musicWebView.evaluateJavascript(
                 "window.onNativeBluetoothPlaybackState && window.onNativeBluetoothPlaybackState(" + JSONObject.quote(state) + ");",
+                null
+        ));
+    }
+
+    private void publishSystemVolumeState() {
+        if (musicWebView == null) {
+            return;
+        }
+        AudioManager audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+        int maxVolume = audioManager == null ? 0 : audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
+        int currentVolume = audioManager == null ? 0 : audioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
+        double volume = maxVolume <= 0 ? 0 : (double) currentVolume / (double) maxVolume;
+        musicWebView.post(() -> musicWebView.evaluateJavascript(
+                "window.onNativeSystemVolumeChange && window.onNativeSystemVolumeChange(" + volume + ");",
                 null
         ));
     }
@@ -1279,6 +1431,7 @@ public class MainActivity extends AppCompatActivity {
         bluetoothRemotePlayingKnown = true;
         bluetoothRemotePlaying = false;
         bluetoothRemoteProgressUpdatedAtMs = System.currentTimeMillis();
+        setBluetoothConnectionState(BT_STATE_DISCONNECTED);
         publishBluetoothPlaybackState();
     }
 
@@ -1291,9 +1444,16 @@ public class MainActivity extends AppCompatActivity {
             bluetoothRemotePlayingKnown = true;
             bluetoothRemotePlaying = true;
             prepareBluetoothSpeakerRoute();
+            if (BT_STATE_CONNECTED.equals(bluetoothConnectionState)
+                    || BT_STATE_PAUSED.equals(bluetoothConnectionState)) {
+                setBluetoothConnectionState(BT_STATE_PLAYING);
+            }
         } else if (state == A2DP_SINK_STATE_NOT_PLAYING || state == BluetoothProfile.STATE_DISCONNECTED) {
             bluetoothRemotePlayingKnown = true;
             bluetoothRemotePlaying = false;
+            if (BT_STATE_PLAYING.equals(bluetoothConnectionState)) {
+                setBluetoothConnectionState(BT_STATE_PAUSED);
+            }
         }
     }
 
@@ -1556,6 +1716,13 @@ public class MainActivity extends AppCompatActivity {
         userInitiatedBluetoothDisconnect = false;
     }
 
+    private void clearAllBluetoothAutoReconnect() {
+        bluetoothAutoReconnectAddress = "";
+        bluetoothAutoReconnectAttempts = 0;
+        userInitiatedBluetoothDisconnect = false;
+        clearPendingBluetoothConnect();
+    }
+
     private void scheduleBluetoothAutoReconnect(@Nullable BluetoothDevice device, String reason) {
         if (device == null || userInitiatedBluetoothDisconnect || !hasBluetoothConnectPermission()) {
             return;
@@ -1592,21 +1759,53 @@ public class MainActivity extends AppCompatActivity {
         }, backoffDelay);
     }
 
+    private void setBluetoothConnectionState(String state) {
+        bluetoothConnectionState = state;
+    }
+
+    private void recordBluetoothError(String error, String suggestion) {
+        bluetoothLastError = error == null ? "" : error;
+        bluetoothLastErrorAtMs = System.currentTimeMillis();
+        bluetoothErrorRecoverySuggestion = suggestion == null ? "" : suggestion;
+        setBluetoothConnectionState(BT_STATE_ERROR);
+    }
+
+    private void clearBluetoothError() {
+        bluetoothLastError = "";
+        bluetoothErrorRecoverySuggestion = "";
+    }
+
     private void checkBluetoothConnectionStatus() {
         if (confirmedBluetoothAudioAddress.length() == 0) {
+            if (!BT_STATE_IDLE.equals(bluetoothConnectionState)
+                    && !BT_STATE_DISCOVERING.equals(bluetoothConnectionState)
+                    && !BT_STATE_DISCONNECTED.equals(bluetoothConnectionState)
+                    && !BT_STATE_ERROR.equals(bluetoothConnectionState)) {
+                setBluetoothConnectionState(BT_STATE_DISCONNECTED);
+            }
             return;
         }
         BluetoothDevice device = getRemoteDevice(confirmedBluetoothAudioAddress);
         if (device == null) {
+            setBluetoothConnectionState(BT_STATE_ERROR);
+            recordBluetoothError("设备引用已失效", "请重新启动应用或重置蓝牙");
             return;
         }
         boolean stillConnected = isA2dpConnected(device) || isA2dpSinkConnected(device);
         if (!stillConnected) {
             if (confirmedBluetoothConnectedAtMs > 0L && System.currentTimeMillis() - confirmedBluetoothConnectedAtMs > 3000L) {
                 recordBluetoothDisconnect(device);
+                setBluetoothConnectionState(BT_STATE_DISCONNECTED);
                 if (!userInitiatedBluetoothDisconnect) {
                     scheduleBluetoothAutoReconnect(device, "连接状态检查发现断开");
                 }
+            }
+        } else {
+            if (!BT_STATE_CONNECTED.equals(bluetoothConnectionState)
+                    && !BT_STATE_PLAYING.equals(bluetoothConnectionState)
+                    && !BT_STATE_PAUSED.equals(bluetoothConnectionState)) {
+                setBluetoothConnectionState(BT_STATE_CONNECTED);
+                clearBluetoothError();
             }
         }
     }
@@ -2134,6 +2333,137 @@ public class MainActivity extends AppCompatActivity {
         } catch (Exception ignored) {
             startActivity(new Intent(Settings.ACTION_SETTINGS));
         }
+        showBluetoothBackOverlay();
+    }
+
+    private void showBluetoothBackOverlay() {
+        if (windowManager == null) {
+            windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
+        }
+        if (windowManager == null) {
+            return;
+        }
+        if (bluetoothBackOverlay != null) {
+            return;
+        }
+        if (!Settings.canDrawOverlays(this)) {
+            try {
+                Intent intent = new Intent(
+                        Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                        Uri.parse("package:" + getPackageName())
+                );
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                startActivity(intent);
+            } catch (Exception ignored) {
+            }
+            return;
+        }
+
+        int horizontalPadding = (int) TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_DIP, 18f, getResources().getDisplayMetrics());
+        int verticalPadding = (int) TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_DIP, 12f, getResources().getDisplayMetrics());
+        int cornerRadius = (int) TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_DIP, 24f, getResources().getDisplayMetrics());
+
+        TextView backButton = new TextView(this);
+        backButton.setText("\u8fd4\u56de");
+        backButton.setTextColor(Color.WHITE);
+        backButton.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f);
+        backButton.setGravity(Gravity.CENTER);
+        backButton.setPadding(horizontalPadding, verticalPadding, horizontalPadding, verticalPadding);
+        backButton.setOnClickListener(v -> {
+            hideBluetoothBackOverlay();
+            Intent backIntent = new Intent(this, MainActivity.class);
+            backIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+            try {
+                startActivity(backIntent);
+            } catch (Exception ignored) {
+            }
+        });
+
+        GradientDrawable background = new GradientDrawable();
+        background.setShape(GradientDrawable.RECTANGLE);
+        background.setCornerRadius(cornerRadius);
+        background.setColor(0xE62181FF);
+        backButton.setBackground(background);
+
+        int type = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+                ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+                : WindowManager.LayoutParams.TYPE_PHONE;
+        WindowManager.LayoutParams params = new WindowManager.LayoutParams(
+                WindowManager.LayoutParams.WRAP_CONTENT,
+                WindowManager.LayoutParams.WRAP_CONTENT,
+                type,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+                        | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
+                        | WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
+                PixelFormat.TRANSLUCENT
+        );
+        params.gravity = Gravity.TOP | Gravity.START;
+        int marginX = (int) TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_DIP, 20f, getResources().getDisplayMetrics());
+        int marginY = (int) TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_DIP, 24f, getResources().getDisplayMetrics());
+        params.x = marginX;
+        params.y = marginY;
+
+        try {
+            windowManager.addView(backButton, params);
+            bluetoothBackOverlay = backButton;
+        } catch (Exception ignored) {
+        }
+    }
+
+    private void hideBluetoothBackOverlay() {
+        if (windowManager != null && bluetoothBackOverlay != null) {
+            try {
+                windowManager.removeView(bluetoothBackOverlay);
+            } catch (Exception ignored) {
+            }
+            bluetoothBackOverlay = null;
+        }
+    }
+
+    private void showUsbDisconnectedNotification() {
+        NotificationManager notificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+        if (notificationManager == null) {
+            return;
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationChannel channel = notificationManager.getNotificationChannel(USB_NOTIFICATION_CHANNEL_ID);
+            if (channel == null) {
+                channel = new NotificationChannel(
+                        USB_NOTIFICATION_CHANNEL_ID,
+                        "USB设备状态",
+                        NotificationManager.IMPORTANCE_LOW
+                );
+                channel.setDescription("USB设备连接状态通知");
+                channel.setShowBadge(false);
+                notificationManager.createNotificationChannel(channel);
+            }
+        }
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, USB_NOTIFICATION_CHANNEL_ID)
+                .setSmallIcon(android.R.drawable.stat_sys_warning)
+                .setContentTitle("USB设备已断开")
+                .setContentText("USB设备已断开，音乐播放已停止")
+                .setPriority(NotificationCompat.PRIORITY_LOW)
+                .setAutoCancel(true)
+                .setOngoing(false);
+        try {
+            notificationManager.notify(USB_DISCONNECTED_NOTIFICATION_ID, builder.build());
+        } catch (Exception ignored) {
+        }
+    }
+
+    private void cancelUsbDisconnectedNotification() {
+        NotificationManager notificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+        if (notificationManager != null) {
+            try {
+                notificationManager.cancel(USB_DISCONNECTED_NOTIFICATION_ID);
+            } catch (Exception ignored) {
+            }
+        }
     }
 
     @Override
@@ -2236,12 +2566,11 @@ public class MainActivity extends AppCompatActivity {
             }
             usbScanning = false;
             usbMusicStateJson = state;
-            publishUsbEvent("scan_complete", getUsbTrackCount(state) > 0
-                    ? "USB音乐扫描完成"
-                    : "USB设备中无音乐文件...");
-            publishUsbEvent("scan_complete", getUsbTrackCount(state) > 0
+            boolean hasTracks = getUsbTrackCount(state) > 0;
+            publishUsbEvent("scan_completed", hasTracks
                     ? "USB\u97f3\u4e50\u626b\u63cf\u5b8c\u6210"
                     : "USB\u8bbe\u5907\u4e2d\u65e0\u97f3\u4e50\u6587\u4ef6");
+            syncFavoritesAfterScan(state);
         }, "UsbMusicScanner").start();
     }
 
@@ -2252,9 +2581,40 @@ public class MainActivity extends AppCompatActivity {
         }
         File primaryRoot = roots.get(0);
         Map<String, UsbFolderBucket> folders = new LinkedHashMap<>();
+        int[] fileCounters = new int[]{0, 0};
+        long[] lastProgressTime = new long[]{0};
+        List<File> discoveredFiles = new ArrayList<>();
+
         for (File root : roots) {
-            scanUsbRootWithProgress(root, folders, new int[]{0, 0}, new long[]{0});
+            discoverUsbAudioFiles(root, discoveredFiles, fileCounters, lastProgressTime);
         }
+
+        Map<String, List<JSONObject>> enrichedTracks = new LinkedHashMap<>();
+        int totalFiles = discoveredFiles.size();
+        int processedFiles = 0;
+        long lastMetadataProgress = System.currentTimeMillis();
+
+        for (File file : discoveredFiles) {
+            if (Thread.currentThread().isInterrupted()) {
+                break;
+            }
+            try {
+                addUsbTrackWithMetadata(file, folders, discoveredFiles.indexOf(file));
+            } catch (Exception ignored) {
+                try {
+                    addUsbTrackBasic(file, folders);
+                } catch (Exception e) {
+                    // Skip malformed files
+                }
+            }
+            processedFiles++;
+            long now = System.currentTimeMillis();
+            if (now - lastMetadataProgress > USB_SCAN_PROGRESS_INTERVAL_MS) {
+                publishUsbScanProgress(processedFiles, totalFiles);
+                lastMetadataProgress = now;
+            }
+        }
+
         try {
             JSONArray folderArray = new JSONArray();
             JSONArray trackArray = new JSONArray();
@@ -2279,13 +2639,44 @@ public class MainActivity extends AppCompatActivity {
             result.put("label", label);
             result.put("uuid", label);
             result.put("id", label + ":" + label);
-            result.put("message", folderArray.length() > 0 ? "USB扫描完成" : "USB设备中无音乐文件...");
             result.put("message", folderArray.length() > 0 ? "USB\u626b\u63cf\u5b8c\u6210" : "USB\u8bbe\u5907\u4e2d\u65e0\u97f3\u4e50\u6587\u4ef6");
             result.put("folders", folderArray);
             result.put("tracks", trackArray);
             return result.toString();
         } catch (Exception exception) {
             return createUsbErrorJson("\u65e0\u6cd5\u8bc6\u522b\u6b64\u8bbe\u5907");
+        }
+    }
+
+    private void discoverUsbAudioFiles(File root, List<File> discovered, int[] counters, long[] lastTime) {
+        ArrayDeque<File> stack = new ArrayDeque<>();
+        stack.push(root);
+        while (!stack.isEmpty()) {
+            if (Thread.currentThread().isInterrupted()) {
+                return;
+            }
+            File current = stack.pop();
+            File[] children = current.listFiles();
+            if (children == null) {
+                continue;
+            }
+            for (File child : children) {
+                if (child == null || child.isHidden()) {
+                    continue;
+                }
+                if (child.isDirectory()) {
+                    stack.push(child);
+                } else if (isSupportedUsbAudioFile(child)) {
+                    discovered.add(child);
+                    counters[0]++;
+                    counters[1] = discovered.size();
+                    long now = System.currentTimeMillis();
+                    if (now - lastTime[0] > USB_SCAN_PROGRESS_INTERVAL_MS) {
+                        publishUsbScanProgress(counters[1], counters[1]);
+                        lastTime[0] = now;
+                    }
+                }
+            }
         }
     }
 
@@ -2349,7 +2740,25 @@ public class MainActivity extends AppCompatActivity {
             progress.put("type", "scan_progress");
             progress.put("scanned", scanned);
             progress.put("found", found);
-            String script = "window.onUsbEvent&&window.onUsbEvent(" + progress.toString() + ");";
+            progress.put("total", Math.max(scanned, found));
+            String script = "window.onNativeUsbEvent&&window.onNativeUsbEvent("
+                    + JSONObject.quote(progress.toString())
+                    + ");";
+            musicWebView.post(() -> evaluatePlayerScript(script));
+        } catch (Exception ignored) {
+        }
+    }
+
+    private void publishUsbScanProgress(int scanned, int found, int total) {
+        try {
+            JSONObject progress = new JSONObject();
+            progress.put("type", "scan_progress");
+            progress.put("scanned", scanned);
+            progress.put("found", found);
+            progress.put("total", total);
+            String script = "window.onNativeUsbEvent&&window.onNativeUsbEvent("
+                    + JSONObject.quote(progress.toString())
+                    + ");";
             musicWebView.post(() -> evaluatePlayerScript(script));
         } catch (Exception ignored) {
         }
@@ -2370,8 +2779,62 @@ public class MainActivity extends AppCompatActivity {
             JSONObject track = createUsbTrackJson(file, folderPath, bucket.name, bucket.tracks.length());
             bucket.tracks.put(track);
         } catch (Exception ignored) {
-            // Ignore malformed files so one bad item does not block the whole USB scan.
         }
+    }
+
+    private void addUsbTrackWithMetadata(File file, Map<String, UsbFolderBucket> folders, int index) {
+        File parent = file.getParentFile();
+        if (parent == null) {
+            return;
+        }
+        String folderPath = parent.getAbsolutePath();
+        UsbFolderBucket bucket = folders.get(folderPath);
+        if (bucket == null) {
+            bucket = new UsbFolderBucket(folderPath, parent.getName());
+            folders.put(folderPath, bucket);
+        }
+        JSONObject track;
+        try {
+            track = createUsbTrackJson(file, folderPath, bucket.name, bucket.tracks.length());
+        } catch (Exception e) {
+            track = createBasicUsbTrackJson(file, folderPath, bucket.name, bucket.tracks.length());
+        }
+        bucket.tracks.put(track);
+    }
+
+    private void addUsbTrackBasic(File file, Map<String, UsbFolderBucket> folders) {
+        File parent = file.getParentFile();
+        if (parent == null) {
+            return;
+        }
+        String folderPath = parent.getAbsolutePath();
+        UsbFolderBucket bucket = folders.get(folderPath);
+        if (bucket == null) {
+            bucket = new UsbFolderBucket(folderPath, parent.getName());
+            folders.put(folderPath, bucket);
+        }
+        JSONObject track = createBasicUsbTrackJson(file, folderPath, bucket.name, bucket.tracks.length());
+        bucket.tracks.put(track);
+    }
+
+    private JSONObject createBasicUsbTrackJson(File file, String folderPath, String folderName, int index) {
+        JSONObject track = new JSONObject();
+        try {
+            track.put("id", folderPath + "::" + index);
+            track.put("title", stripExtension(file.getName()));
+            track.put("artist", "USB\u97f3\u4e50");
+            track.put("album", "");
+            track.put("fileName", file.getName());
+            track.put("fileSize", file.length());
+            track.put("path", file.getAbsolutePath());
+            track.put("url", Uri.fromFile(file).toString());
+            track.put("folderPath", folderPath);
+            track.put("folderName", folderName);
+            track.put("durationLabel", "--:--");
+            track.put("coverUrl", "");
+        } catch (Exception ignored) {
+        }
+        return track;
     }
 
     private JSONObject createUsbTrackJson(File file, String folderPath, String folderName, int index) throws Exception {
@@ -2379,6 +2842,8 @@ public class MainActivity extends AppCompatActivity {
         String title = stripExtension(file.getName());
         String artist = "USB音乐";
         String album = "";
+        String durationLabel = "--:--";
+        String coverUrl = "";
         artist = "USB\u97f3\u4e50";
         MediaMetadataRetriever retriever = new MediaMetadataRetriever();
         try {
@@ -2386,6 +2851,7 @@ public class MainActivity extends AppCompatActivity {
             String metadataTitle = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE);
             String metadataArtist = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST);
             String metadataAlbum = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM);
+            String metadataDuration = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION);
             if (metadataTitle != null && metadataTitle.trim().length() > 0) {
                 title = metadataTitle.trim();
             }
@@ -2395,8 +2861,18 @@ public class MainActivity extends AppCompatActivity {
             if (metadataAlbum != null && metadataAlbum.trim().length() > 0) {
                 album = metadataAlbum.trim();
             }
+            if (metadataDuration != null && metadataDuration.trim().length() > 0) {
+                try {
+                    long durationMs = Long.parseLong(metadataDuration.trim());
+                    durationLabel = formatDurationLabel(durationMs);
+                } catch (NumberFormatException ignored) {
+                }
+            }
+            byte[] embeddedPicture = retriever.getEmbeddedPicture();
+            if (embeddedPicture != null && embeddedPicture.length > 0) {
+                coverUrl = saveUsbCoverCache(file, embeddedPicture);
+            }
         } catch (Exception ignored) {
-            // Filename fallback keeps large scans fast and resilient.
         } finally {
             try {
                 retriever.release();
@@ -2413,40 +2889,198 @@ public class MainActivity extends AppCompatActivity {
         track.put("url", Uri.fromFile(file).toString());
         track.put("folderPath", folderPath);
         track.put("folderName", folderName);
+        track.put("durationLabel", durationLabel);
+        track.put("coverUrl", coverUrl);
         return track;
+    }
+
+    private String saveUsbCoverCache(File sourceFile, byte[] pictureData) {
+        try {
+            File coverDir = new File(getCacheDir(), "usb_covers");
+            if (!coverDir.exists() && !coverDir.mkdirs()) {
+                return "";
+            }
+            String hash = Integer.toHexString(sourceFile.getAbsolutePath().hashCode());
+            File coverFile = new File(coverDir, hash + ".jpg");
+            if (coverFile.exists() && coverFile.length() == pictureData.length) {
+                return Uri.fromFile(coverFile).toString();
+            }
+            java.io.FileOutputStream fos = new java.io.FileOutputStream(coverFile);
+            try {
+                fos.write(pictureData);
+                fos.flush();
+            } finally {
+                fos.close();
+            }
+            return Uri.fromFile(coverFile).toString();
+        } catch (Exception ignored) {
+            return "";
+        }
+    }
+
+    private String formatDurationLabel(long durationMs) {
+        long totalSeconds = durationMs / 1000;
+        long minutes = totalSeconds / 60;
+        long seconds = totalSeconds % 60;
+        if (minutes > 60) {
+            long hours = minutes / 60;
+            minutes = minutes % 60;
+            return String.format("%d:%02d:%02d", hours, minutes, seconds);
+        }
+        return String.format("%d:%02d", minutes, seconds);
     }
 
     private List<File> findUsbRoots() {
         List<File> roots = new ArrayList<>();
-        File storage = new File("/storage");
-        File[] candidates = storage.listFiles();
-        if (candidates == null) {
-            return roots;
+        List<String> seenPaths = new ArrayList<>();
+        String[] usbPathCandidates = {
+                "/storage", "/mnt/usb", "/storage/usb", "/storage/usbdisk0",
+                "/storage/usbdisk1", "/storage/usb0", "/storage/usb1",
+                "/media/usb0", "/media/usb1", "/mnt/usb0", "/mnt/usb1",
+                "/mnt/media_rw/usb0", "/mnt/media_rw/usb1",
+                "/mnt/runtime/default/usb"
+        };
+        for (String candidatePath : usbPathCandidates) {
+            File dir = new File(candidatePath);
+            if (!dir.isDirectory() || !dir.canRead()) {
+                continue;
+            }
+            String path = dir.getAbsolutePath();
+            if (seenPaths.contains(path)) {
+                continue;
+            }
+            seenPaths.add(path);
+            if ("/storage".equals(candidatePath)) {
+                File[] children = dir.listFiles();
+                if (children != null) {
+                    for (File child : children) {
+                        if (child == null || !child.isDirectory() || !child.canRead()) {
+                            continue;
+                        }
+                        String name = child.getName();
+                        if ("emulated".equals(name) || "self".equals(name)) {
+                            continue;
+                        }
+                        String childPath = child.getAbsolutePath();
+                        if (!seenPaths.contains(childPath)) {
+                            seenPaths.add(childPath);
+                            roots.add(child);
+                        }
+                    }
+                }
+            } else {
+                roots.add(dir);
+            }
         }
-        for (File candidate : candidates) {
-            if (candidate == null || !candidate.isDirectory() || !candidate.canRead()) {
-                continue;
+        File storage = new File("/storage");
+        File[] storageChildren = storage.listFiles();
+        if (storageChildren != null) {
+            for (File candidate : storageChildren) {
+                if (candidate == null || !candidate.isDirectory() || !candidate.canRead()) {
+                    continue;
+                }
+                String name = candidate.getName();
+                if ("emulated".equals(name) || "self".equals(name)) {
+                    continue;
+                }
+                String path = candidate.getAbsolutePath();
+                if (!seenPaths.contains(path)) {
+                    seenPaths.add(path);
+                    roots.add(candidate);
+                }
             }
-            String name = candidate.getName();
-            if ("emulated".equals(name) || "self".equals(name)) {
-                continue;
-            }
-            roots.add(candidate);
         }
         return roots;
     }
 
     private boolean isSupportedUsbAudioFile(File file) {
-        if (file.length() <= USB_MIN_AUDIO_FILE_BYTES) {
+        if (file == null || !file.isFile()) {
+            return false;
+        }
+        long length = file.length();
+        if (length <= USB_MIN_AUDIO_FILE_BYTES) {
             return false;
         }
         String name = file.getName().toLowerCase();
+        boolean extensionMatch = false;
         for (String extension : USB_AUDIO_EXTENSIONS) {
             if (name.endsWith(extension)) {
-                return true;
+                extensionMatch = true;
+                break;
             }
         }
-        return false;
+        if (!extensionMatch) {
+            return false;
+        }
+        return hasValidAudioSignature(file);
+    }
+
+    private boolean hasValidAudioSignature(File file) {
+        try (java.io.FileInputStream fis = new java.io.FileInputStream(file)) {
+            byte[] header = new byte[16];
+            int read = fis.read(header);
+            if (read < 4) {
+                return false;
+            }
+            if (read >= 3 && header[0] == 'I' && header[1] == 'D' && header[2] == '3') {
+                return true;
+            }
+            if (read >= 4 && header[0] == 'R' && header[1] == 'I' && header[2] == 'F' && header[3] == 'F') {
+                if (read >= 12) {
+                    String format = new String(header, 8, 4, "US-ASCII");
+                    return "WAVE".equals(format) || "AIFF".equals(format) || "OGGS".equals(format);
+                }
+                return true;
+            }
+            if (read >= 4 && header[0] == 'f' && header[1] == 'L' && header[2] == 'a' && header[3] == 'C') {
+                return true;
+            }
+            if (read >= 8 && header[4] == 'f' && header[5] == 't' && header[6] == 'y' && header[7] == 'p') {
+                return true;
+            }
+            if (read >= 3 && header[0] == 'O' && header[1] == 'g' && header[2] == 'g') {
+                return true;
+            }
+            if (read >= 4 && header[0] == '0' && header[1] == '0' && header[2] == '0' && header[3] == '1') {
+                String name = file.getName().toLowerCase();
+                return name.endsWith(".ape");
+            }
+            if (read >= 4 && (header[0] == 'P' && header[1] == 'K')) {
+                return false;
+            }
+            if (read >= 4 && (header[0] == 'P' && header[1] == 'K')) {
+                return false;
+            }
+            String fileName = file.getName().toLowerCase();
+            if (fileName.endsWith(".m4a") || fileName.endsWith(".m4b")
+                    || fileName.endsWith(".aac") || fileName.endsWith(".opus")) {
+                return read >= 8 && header[4] == 'f' && header[5] == 't' && header[6] == 'y' && header[7] == 'p';
+            }
+            if (fileName.endsWith(".mp3") || fileName.endsWith(".mp2") || fileName.endsWith(".mp1")
+                    || fileName.endsWith(".mpeg") || fileName.endsWith(".mpg")) {
+                return read >= 3 && (header[0] == 'I' && header[1] == 'D' && header[2] == '3'
+                        || (header[0] & 0xFF) == 0xFF && (header[1] & 0xE0) == 0xE0);
+            }
+            if (fileName.endsWith(".flac")) {
+                return read >= 4 && header[0] == 'f' && header[1] == 'L' && header[2] == 'a' && header[3] == 'C';
+            }
+            if (fileName.endsWith(".wav")) {
+                return read >= 12 && header[0] == 'R' && header[1] == 'I' && header[2] == 'F' && header[3] == 'F'
+                        && header[8] == 'W' && header[9] == 'A' && header[10] == 'V' && header[11] == 'E';
+            }
+            if (fileName.endsWith(".ogg")) {
+                return read >= 3 && header[0] == 'O' && header[1] == 'g' && header[2] == 'g';
+            }
+            if (fileName.endsWith(".ape")) {
+                return read >= 4 && header[0] == '0' && header[1] == '0' && header[2] == '0' && header[3] == '1';
+            }
+            if (fileName.endsWith(".wma")) {
+                return read >= 4 && header[0] == 'R' && header[1] == 'I' && header[2] == 'F' && header[3] == 'F';
+            }
+            return read >= 4;
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     private String stripExtension(String name) {
@@ -2529,6 +3163,211 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    private void loadPersistedFavorites() {
+        if (favoritesLoaded) {
+            return;
+        }
+        favoritesLoaded = true;
+        File indexFile = getFavoritesIndexFile();
+        if (indexFile == null || !indexFile.exists()) {
+            return;
+        }
+        try (java.io.FileInputStream fis = new java.io.FileInputStream(indexFile);
+             java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.InputStreamReader(fis))) {
+            StringBuilder sb = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                sb.append(line);
+            }
+            JSONArray array = new JSONArray(sb.toString());
+            for (int i = 0; i < array.length(); i++) {
+                JSONObject fav = array.getJSONObject(i);
+                String key = fav.optString("key", "");
+                if (!key.isEmpty()) {
+                    persistedUsbFavorites.put(key, fav);
+                }
+            }
+        } catch (Exception ignored) {
+        }
+    }
+
+    private void persistFavorites() {
+        try {
+            File dir = getOrCreateFavoritesDir();
+            if (dir == null) {
+                return;
+            }
+            File indexFile = new File(dir, USB_FAVORITES_INDEX_FILE);
+            JSONArray array = new JSONArray();
+            for (JSONObject fav : persistedUsbFavorites.values()) {
+                array.put(fav);
+            }
+            try (java.io.FileOutputStream fos = new java.io.FileOutputStream(indexFile)) {
+                fos.write(array.toString().getBytes("UTF-8"));
+                fos.flush();
+            }
+        } catch (Exception ignored) {
+        }
+    }
+
+    private File getOrCreateFavoritesDir() {
+        File dir = new File(getExternalFilesDir(null), USB_FAVORITES_SYNC_DIR);
+        if (!dir.exists() && !dir.mkdirs()) {
+            dir = new File(getFilesDir(), USB_FAVORITES_SYNC_DIR);
+            if (!dir.exists() && !dir.mkdirs()) {
+                return null;
+            }
+        }
+        return dir;
+    }
+
+    private File getFavoritesIndexFile() {
+        File dir = getOrCreateFavoritesDir();
+        return dir == null ? null : new File(dir, USB_FAVORITES_INDEX_FILE);
+    }
+
+    private void syncFavoritesAfterScan(String stateJson) {
+        loadPersistedFavorites();
+        if (persistedUsbFavorites.isEmpty()) {
+            return;
+        }
+        try {
+            JSONObject state = new JSONObject(stateJson);
+            JSONArray tracks = state.optJSONArray("tracks");
+            if (tracks == null) {
+                return;
+            }
+            JSONArray matchedFavorites = new JSONArray();
+            for (int i = 0; i < tracks.length(); i++) {
+                JSONObject track = tracks.getJSONObject(i);
+                String key = buildFavoriteKey(
+                        track.optString("artist", ""),
+                        track.optString("title", "")
+                );
+                if (persistedUsbFavorites.containsKey(key)) {
+                    matchedFavorites.put(track.put("favoriteKey", key));
+                }
+            }
+            JSONObject syncResult = new JSONObject();
+            syncResult.put("type", "favorites_synced");
+            syncResult.put("matchedCount", matchedFavorites.length());
+            syncResult.put("favorites", matchedFavorites);
+            String script = "window.onNativeUsbEvent&&window.onNativeUsbEvent("
+                    + JSONObject.quote(syncResult.toString())
+                    + ");";
+            musicWebView.post(() -> musicWebView.evaluateJavascript(script, null));
+        } catch (Exception ignored) {
+        }
+    }
+
+    private String buildFavoriteKey(String artist, String title) {
+        return (artist == null ? "" : artist) + "::" + (title == null ? "" : title);
+    }
+
+    private synchronized void addFavoriteToStorage(
+            String trackPath, String artist, String title,
+            String album, String fileSize, String durationLabel, String coverUrl
+    ) {
+        loadPersistedFavorites();
+        String key = buildFavoriteKey(artist, title);
+        JSONObject fav = new JSONObject();
+        try {
+            fav.put("key", key);
+            fav.put("trackPath", trackPath == null ? "" : trackPath);
+            fav.put("artist", artist == null ? "" : artist);
+            fav.put("title", title == null ? "" : title);
+            fav.put("album", album == null ? "" : album);
+            fav.put("fileSize", fileSize == null ? "0" : fileSize);
+            fav.put("durationLabel", durationLabel == null ? "--:--" : durationLabel);
+            fav.put("coverUrl", coverUrl == null ? "" : coverUrl);
+            fav.put("addedAt", System.currentTimeMillis());
+            persistedUsbFavorites.put(key, fav);
+            persistFavorites();
+            copyFileToFavoritesDir(trackPath, key);
+        } catch (Exception ignored) {
+        }
+    }
+
+    private synchronized boolean removeFavoriteFromStorage(String artist, String title) {
+        loadPersistedFavorites();
+        String key = buildFavoriteKey(artist, title);
+        JSONObject removed = persistedUsbFavorites.remove(key);
+        if (removed != null) {
+            persistFavorites();
+            String trackPath = removed.optString("trackPath", "");
+            deleteFileFromFavoritesDir(key);
+            if (!trackPath.isEmpty()) {
+                File src = new File(trackPath);
+                if (src.exists()) {
+                    File dest = getFavoriteCopyFile(key);
+                    if (dest.exists()) {
+                        dest.delete();
+                    }
+                }
+            }
+            return true;
+        }
+        return false;
+    }
+
+    private JSONArray getPersistedFavoritesAsJson() {
+        loadPersistedFavorites();
+        JSONArray result = new JSONArray();
+        for (JSONObject fav : persistedUsbFavorites.values()) {
+            result.put(fav);
+        }
+        return result;
+    }
+
+    private void copyFileToFavoritesDir(String trackPath, String key) {
+        if (trackPath == null || trackPath.isEmpty()) {
+            return;
+        }
+        File src = new File(trackPath);
+        if (!src.isFile() || !src.canRead()) {
+            return;
+        }
+        try {
+            File dest = getFavoriteCopyFile(key);
+            File parent = dest.getParentFile();
+            if (parent != null && !parent.exists()) {
+                parent.mkdirs();
+            }
+            if (dest.exists() && dest.length() == src.length()) {
+                return;
+            }
+            try (java.io.FileInputStream fis = new java.io.FileInputStream(src);
+                 java.io.FileOutputStream fos = new java.io.FileOutputStream(dest)) {
+                byte[] buffer = new byte[8192];
+                int read;
+                while ((read = fis.read(buffer)) != -1) {
+                    fos.write(buffer, 0, read);
+                }
+                fos.flush();
+            }
+        } catch (Exception ignored) {
+        }
+    }
+
+    private void deleteFileFromFavoritesDir(String key) {
+        try {
+            File dest = getFavoriteCopyFile(key);
+            if (dest.exists()) {
+                dest.delete();
+            }
+        } catch (Exception ignored) {
+        }
+    }
+
+    private File getFavoriteCopyFile(String key) {
+        File dir = getOrCreateFavoritesDir();
+        if (dir == null) {
+            return new File(getCacheDir(), "usb_fav_" + key.hashCode() + ".tmp");
+        }
+        String safeKey = key.replaceAll("[^a-zA-Z0-9_.-]", "_");
+        return new File(dir, safeKey + ".audio");
+    }
+
     private static class UsbFolderBucket {
         final String path;
         final String name;
@@ -2561,6 +3400,40 @@ public class MainActivity extends AppCompatActivity {
         @JavascriptInterface
         public String getBluetoothState() {
             return bluetoothStateJson();
+        }
+
+        @JavascriptInterface
+        public String refreshBluetoothState() {
+            ensureA2dpProxy();
+            checkSystemConnectedBluetoothDevices();
+            publishBluetoothPlaybackState();
+            return bluetoothStateJson();
+        }
+
+        @JavascriptInterface
+        public String getBluetoothStatusDetail() {
+            JSONObject result = new JSONObject();
+            try {
+                result.put("state", bluetoothStateJson());
+                result.put("metrics", bluetoothConnectionMetricsJson());
+                result.put("playback", bluetoothPlaybackStateJson());
+            } catch (Exception ignored) {
+                return "{\"error\":\"状态详情获取失败\"}";
+            }
+            return result.toString();
+        }
+
+        @JavascriptInterface
+        public String clearBluetoothErrorState() {
+            clearBluetoothError();
+            setBluetoothConnectionState(BT_STATE_IDLE);
+            return statusJson(true, "错误状态已清除");
+        }
+
+        @JavascriptInterface
+        public String cancelBluetoothReconnect() {
+            clearAllBluetoothAutoReconnect();
+            return statusJson(true, "已取消自动重连");
         }
 
         @JavascriptInterface
@@ -2661,13 +3534,13 @@ public class MainActivity extends AppCompatActivity {
                 return statusJson(false, "\u84dd\u7259\u672a\u5f00\u542f");
             }
             userInitiatedBluetoothDisconnect = true;
-            bluetoothAutoReconnectAddress = "";
-            bluetoothAutoReconnectAttempts = 0;
+            clearAllBluetoothAutoReconnect();
             clearBluetoothControlTarget(device);
             if (device.getAddress().equals(confirmedBluetoothAudioAddress)) {
                 confirmedBluetoothAudioAddress = "";
                 markBluetoothPlaybackDisconnected();
             }
+            setBluetoothConnectionState(BT_STATE_DISCONNECTED);
             openBluetoothSettings();
             return statusJson(true, "\u8bf7\u5728\u7cfb\u7edf\u84dd\u7259\u8bbe\u7f6e\u4e2d\u5173\u95ed\u8bbe\u7f6e\u7684\"\u5a92\u4f53\u97f3\u9891\"\u5f00\u5173");
         }
@@ -2681,9 +3554,11 @@ public class MainActivity extends AppCompatActivity {
                 return statusJson(false, "\u7f3a\u5c11\u84dd\u7259\u8fde\u63a5\u6743\u9650");
             }
             userInitiatedBluetoothDisconnect = true;
-            bluetoothAutoReconnectAddress = "";
-            bluetoothAutoReconnectAttempts = 0;
+            clearAllBluetoothAutoReconnect();
             requestedBluetoothControlAddress = "";
+            confirmedBluetoothAudioAddress = "";
+            markBluetoothPlaybackDisconnected();
+            setBluetoothConnectionState(BT_STATE_DISCONNECTED);
             return statusJson(true, "\u8bf7\u5728\u7cfb\u7edf\u84dd\u7259\u8bbe\u7f6e\u4e2d\u5173\u95ed\u8bbe\u5907\u7684\"\u5a92\u4f53\u97f3\u9891\"\u5f00\u5173");
         }
 
@@ -2811,6 +3686,47 @@ public class MainActivity extends AppCompatActivity {
         public void openBluetoothSettings() {
             MainActivity.this.openBluetoothSettings();
         }
+
+        @JavascriptInterface
+        public String getPersistedFavorites() {
+            loadPersistedFavorites();
+            return getPersistedFavoritesAsJson().toString();
+        }
+
+        @JavascriptInterface
+        public String addFavoriteTrack(
+                String trackPath, String artist, String title,
+                String album, String fileSize, String durationLabel, String coverUrl
+        ) {
+            try {
+                addFavoriteToStorage(trackPath, artist, title, album, fileSize, durationLabel, coverUrl);
+                JSONObject result = new JSONObject();
+                result.put("success", true);
+                result.put("key", buildFavoriteKey(artist, title));
+                return result.toString();
+            } catch (Exception e) {
+                return "{\"success\":false,\"message\":\"" + e.getMessage() + "\"}";
+            }
+        }
+
+        @JavascriptInterface
+        public String removeFavoriteTrack(String artist, String title) {
+            try {
+                boolean removed = removeFavoriteFromStorage(artist, title);
+                JSONObject result = new JSONObject();
+                result.put("success", removed);
+                return result.toString();
+            } catch (Exception e) {
+                return "{\"success\":false,\"message\":\"" + e.getMessage() + "\"}";
+            }
+        }
+
+        @JavascriptInterface
+        public String syncFavoritesWithUsb() {
+            String state = usbMusicStateJson;
+            new Thread(() -> syncFavoritesAfterScan(state), "UsbFavSync").start();
+            return "{\"success\":true}";
+        }
     }
 
     private void configureBackNavigation() {
@@ -2831,8 +3747,61 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    private void configurePhoneStateListener() {
+        telephonyManager = (TelephonyManager) getSystemService(TELEPHONY_SERVICE);
+        if (telephonyManager == null) {
+            return;
+        }
+        phoneStateListener = new PhoneStateListener() {
+            @Override
+            public void onCallStateChanged(int state, String number) {
+                switch (state) {
+                    case TelephonyManager.CALL_STATE_RINGING:
+                    case TelephonyManager.CALL_STATE_OFFHOOK:
+                        if (!phoneCallActive) {
+                            phoneCallActive = true;
+                            evaluatePlayerScript("window.onNativePhoneCallStart&&window.onNativePhoneCallStart();");
+                        }
+                        break;
+                    case TelephonyManager.CALL_STATE_IDLE:
+                        if (phoneCallActive) {
+                            phoneCallActive = false;
+                            evaluatePlayerScript("window.onNativePhoneCallEnd&&window.onNativePhoneCallEnd();");
+                        }
+                        break;
+                    default:
+                        break;
+                }
+            }
+        };
+        try {
+            telephonyManager.listen(phoneStateListener, PhoneStateListener.LISTEN_CALL_STATE);
+        } catch (SecurityException ignored) {
+        }
+    }
+
+    private void requestPhoneStatePermissionIfNeeded() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_PHONE_STATE)
+                == PackageManager.PERMISSION_GRANTED) {
+            return;
+        }
+        try {
+            permissionLauncher.launch(Manifest.permission.READ_PHONE_STATE);
+        } catch (Exception ignored) {
+        }
+    }
+
     @Override
     protected void onDestroy() {
+        hideBluetoothBackOverlay();
+        if (telephonyManager != null && phoneStateListener != null) {
+            try {
+                telephonyManager.listen(phoneStateListener, PhoneStateListener.LISTEN_NONE);
+            } catch (Exception ignored) {
+            }
+            phoneStateListener = null;
+            telephonyManager = null;
+        }
         if (bluetoothAdapter != null) {
             try {
                 if (hasBluetoothScanPermission() && bluetoothAdapter.isDiscovering()) {

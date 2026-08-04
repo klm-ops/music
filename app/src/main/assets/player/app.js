@@ -4,44 +4,15 @@
   var audio = document.getElementById("audio");
   var shell = document.querySelector(".shell");
   var tabs = Array.prototype.slice.call(document.querySelectorAll(".tab"));
-  var localModule = document.getElementById("localModule");
-  var localTransport = document.getElementById("localTransport");
   var bluetoothModule = document.getElementById("bluetoothModule");
   var radioModule = document.getElementById("radioModule");
-  var fileInput = document.getElementById("fileInput");
-  var dropZone = document.getElementById("dropZone");
-  var albumArt = dropZone ? dropZone.querySelector(".album-art") : null;
   var playlistEl = document.getElementById("playlist");
   var favoriteListEl = document.getElementById("favoriteList");
-  var playPauseBtn = document.getElementById("playPauseBtn");
-  var stopBtn = document.getElementById("stopBtn");
-  var prevBtn = document.getElementById("prevBtn");
-  var nextBtn = document.getElementById("nextBtn");
-  var shuffleBtn = document.getElementById("shuffleBtn");
-  var repeatBtn = document.getElementById("repeatBtn");
-  var favoriteToggleBtn = document.getElementById("favoriteToggleBtn");
   var favoritePanelBtn = document.getElementById("favoritePanelBtn");
   var playlistPanelBtn = document.getElementById("playlistPanelBtn");
   var favoritePanel = document.getElementById("favoritePanel");
   var playlistPanel = document.getElementById("playlistPanel");
   var drawerBackdrop = document.getElementById("drawerBackdrop");
-  var clearBtn = document.getElementById("clearBtn");
-  var searchInput = document.getElementById("searchInput");
-  var importProgressPanel = document.getElementById("importProgressPanel");
-  var importProgressTitle = document.getElementById("importProgressTitle");
-  var importProgressCount = document.getElementById("importProgressCount");
-  var importProgressFill = document.getElementById("importProgressFill");
-  var importStatusList = document.getElementById("importStatusList");
-  var importResult = document.getElementById("importResult");
-  var importResultSummary = document.getElementById("importResultSummary");
-  var importFailedList = document.getElementById("importFailedList");
-  var progress = document.getElementById("progress");
-  var volume = document.getElementById("volume");
-  var volumeValue = document.getElementById("volumeValue");
-  var currentTimeEl = document.getElementById("currentTime");
-  var durationEl = document.getElementById("duration");
-  var trackTitle = document.getElementById("trackTitle");
-  var trackArtist = document.getElementById("trackArtist");
   var trackCount = document.getElementById("trackCount");
   var favoriteCount = document.getElementById("favoriteCount");
   var lyricsFullList = document.getElementById("lyricsFullList");
@@ -67,12 +38,14 @@
   var btVolumeValue = document.getElementById("btVolumeValue");
   var radioFrequency = document.getElementById("radioFrequency");
   var radioUnit = document.getElementById("radioUnit");
-  var radioStatus = document.getElementById("radioStatus");
   var radioNeedle = document.getElementById("radioNeedle");
-  var radioStationName = document.getElementById("radioStationName");
-  var radioProgramName = document.getElementById("radioProgramName");
-  var radioHostName = document.getElementById("radioHostName");
+  var radioRuler = document.getElementById("radioRuler");
   var radioScanBtn = document.getElementById("radioScanBtn");
+  var radioStatus = { textContent: "" };
+  var radioStationName = { textContent: "" };
+  var radioProgramName = { textContent: "" };
+  var radioHostName = { textContent: "" };
+  var radioModeLabel = { textContent: "" };
   var radioPlayBtn = document.getElementById("radioPlayBtn");
   var radioTuneDownBtn = document.getElementById("radioTuneDownBtn");
   var radioTuneUpBtn = document.getElementById("radioTuneUpBtn");
@@ -82,19 +55,19 @@
   var radioVolumeValue = document.getElementById("radioVolumeValue");
   var presetGrid = document.getElementById("presetGrid");
   var radioFavoriteBtn = document.getElementById("radioFavoriteBtn");
-  var radioModeLabel = document.getElementById("radioModeLabel");
   var radioFmBtn = document.getElementById("radioFmBtn");
   var radioAmBtn = document.getElementById("radioAmBtn");
-  var radioSignal = document.getElementById("radioSignal");
   var radioStereo = document.getElementById("radioStereo");
+  var radioSignal = { textContent: "" };
   var radioFreqMin = document.getElementById("radioFreqMin");
   var radioFreqMax = document.getElementById("radioFreqMax");
-  var radioUnit = document.getElementById("radioUnit");
-  var radioVolumeDownBtn = document.getElementById("radioVolumeDownBtn");
-  var radioVolumeUpBtn = document.getElementById("radioVolumeUpBtn");
+  var radioSearchModal = document.getElementById("radioSearchModal");
+  var radioScanBtn = document.getElementById("radioScanBtn");
   var usbModule = document.getElementById("usbModule");
   var usbTransport = document.getElementById("usbTransport");
   var usbToast = document.getElementById("usbToast");
+  var usbAlbumArt = document.getElementById("usbAlbumArt");
+  var usbBgOverlay = document.getElementById("usbBgOverlay");
   var usbTrackTitle = document.getElementById("usbTrackTitle");
   var usbTrackMeta = document.getElementById("usbTrackMeta");
   var usbCurrentTime = document.getElementById("usbCurrentTime");
@@ -113,23 +86,56 @@
   var usbVolume = document.getElementById("usbVolume");
   var usbVolumeValue = document.getElementById("usbVolumeValue");
 
+  var favoritePlayBtn = document.getElementById("favoritePlayBtn");
+  var playlistPlayBtn = document.getElementById("playlistPlayBtn");
+  var favoritePlayModeBtn = document.getElementById("favoritePlayModeBtn");
+  var playlistPlayModeBtn = document.getElementById("playlistPlayModeBtn");
+  var favoriteEditBtn = document.getElementById("favoriteEditBtn");
+  var playlistEditBtn = document.getElementById("playlistEditBtn");
+  var favoriteModeLabel = document.getElementById("favoriteModeLabel");
+  var playlistModeLabel = document.getElementById("playlistModeLabel");
+  var favoriteBatchBar = document.getElementById("favoriteBatchBar");
+  var playlistBatchBar = document.getElementById("playlistBatchBar");
+  var favoriteBatchDeleteBtn = document.getElementById("favoriteBatchDeleteBtn");
+  var playlistBatchDeleteBtn = document.getElementById("playlistBatchDeleteBtn");
+  var confirmDialog = document.getElementById("confirmDialog");
+  var confirmOkBtn = document.getElementById("confirmOkBtn");
+  var confirmCancelBtn = document.getElementById("confirmCancelBtn");
+  var confirmMessage = document.getElementById("confirmMessage");
+  var favoriteSelectAllBtn = document.getElementById("favoriteSelectAllBtn");
+  var playlistSelectAllBtn = document.getElementById("playlistSelectAllBtn");
+  var favoriteSelectLabel = document.getElementById("favoriteSelectLabel");
+  var playlistSelectLabel = document.getElementById("playlistSelectLabel");
+  var favoriteCancelBtn = document.getElementById("favoriteCancelBtn");
+  var playlistCancelBtn = document.getElementById("playlistCancelBtn");
+  var favoriteBatchActions = document.getElementById("favoriteBatchActions");
+  var playlistBatchActions = document.getElementById("playlistBatchActions");
+
+  var favoritePlayMode = "loop-list";
+  var playlistPlayMode = "loop-list";
+  var favoriteIsEditing = false;
+  var playlistIsEditing = false;
+  var favoriteBatchSelected = {};
+  var playlistBatchSelected = {};
+  var pendingConfirmAction = null;
+  var currentPlayingTrackId = null;
+  var currentListPlayState = false;
+  var sheetDragState = null;
+  var SHEET_HEIGHT = 605;
+  var SHEET_HIDE_THRESHOLD = 0.3;
+
   var playlist = [];
   var favoriteIds = [];
   var favoriteKeys = [];
-  var localMusicDbPromise = null;
-  var importBatchId = 0;
-  var importState = {
-    total: 0,
-    done: 0,
-    items: []
-  };
-  var activeModule = "local";
+  var activeModule = "bluetooth";
   var userInitiatedModuleSwitch = false;
-  var activeAudioSource = "local";
+  var activeAudioSource = "";
   var usbState = createEmptyUsbState("USB\u8bbe\u5907\u672a\u8fde\u63a5");
   var usbPlaylist = [];
   var currentUsbIndex = 0;
   var usbPlayMode = "folder-loop";
+  var usbShuffleHistory = [];
+  var usbPausedByPhoneCall = false;
   var usbExpandedFolderPath = "";
   var usbResumePending = null;
   var usbToastTimer = 0;
@@ -158,6 +164,9 @@
   var isDraggingBtProgress = false;
   var btDragStartSeconds = 0;
   var btDisconnectNoticeUntil = 0;
+  var btConnectionState = "idle";
+  var btLastError = "";
+  var btErrorRecoverySuggestion = "";
   var btResumeState = {
     shouldResume: false,
     wasPlaying: false,
@@ -301,36 +310,18 @@
   var radioPlaybackToken = 0;
   var radioLocationToken = 0;
   var radioLocationRefreshStarted = false;
-  var radioRegionName = "Default";
+  var radioRegionName = "默认";
   var radioIsLoading = false;
   var currentIndex = 0;
   var isSeeking = false;
-  var isShuffle = false;
-  var isRepeat = false;
-  var localPlaybackMode = "loop";
-  var localLoopMode = "all";
-  var localRandomMode = "none";
-  var pendingLocalResumeState = null;
-  var localResumeApplied = false;
-  var localResumeSaveTimer = 0;
 
-  var PLAYLIST_STORAGE_KEY = "sanyiLocalMusicPlaylist";
+  var PLAYLIST_STORAGE_KEY = "sanyiUsbPlaylist";
   var FAVORITE_STORAGE_KEY = "lanhuFavoriteTracks";
-  var CURRENT_INDEX_STORAGE_KEY = "sanyiLocalMusicCurrentIndex";
-  var LOCAL_PLAYBACK_MODE_STORAGE_KEY = "sanyiLocalPlaybackMode";
-  var LOCAL_PLAYBACK_RESUME_STORAGE_KEY = "sanyiLocalPlaybackResumeState";
   var ACTIVE_MODULE_STORAGE_KEY = "sanyiActiveAudioModule";
   var BLUETOOTH_RESUME_STORAGE_KEY = "sanyiBluetoothResumeState";
   var USB_RESUME_STORAGE_PREFIX = "sanyiUsbResumeState:";
-  var LOCAL_MUSIC_DB_NAME = "sanyi-local-music";
-  var LOCAL_MUSIC_STORE_NAME = "audioFiles";
   var DEFAULT_ALBUM_COVER = "./assets/album-cover.png";
-  var LOCAL_PLAYBACK_MODES = ["random", "loop", "single"];
-  var LOCAL_LOOP_MODES = ["all", "folder", "single"];
-  var LOCAL_RANDOM_MODES = ["none", "all", "folder"];
-  // Add future modules here so status-bar icon contrast stays centralized.
   var MODULE_STATUS_BAR_THEMES = {
-    local: "dark",
     bluetooth: "dark",
     radio: "dark",
     usb: "dark"
@@ -342,27 +333,13 @@
     window.onNativeBluetoothPlaybackState = handleNativeBluetoothPlaybackState;
     window.onNativeUsbEvent = handleNativeUsbEvent;
     window.onNativePlaybackControl = handleNativePlaybackControl;
-    window.onNativeVolumeChanged = handleNativeVolumeChanged;
 
-    document.body.classList.add("module-local");
+    document.body.classList.add("module-bluetooth");
     applyModuleStatusBarTheme(activeModule);
-    loadLocalPlaybackMode();
-    audio.volume = Number(volume.value);
-    if (fileInput) {
-      fileInput.setAttribute("accept", "audio/*,.mp3,.aac,.wav,.flac,.wma,.m4a,.ogg,.opus");
-    }
-    var supportHint = dropZone && dropZone.querySelector(".drop-hint span");
-    if (supportHint) {
-      supportHint.textContent = "\u652f\u6301 MP3 / AAC / WAV / FLAC / WMA";
-    }
-    if (shuffleBtn) {
-      shuffleBtn.className = "visually-hidden";
-      shuffleBtn.setAttribute("tabindex", "-1");
-      shuffleBtn.setAttribute("aria-hidden", "true");
-    }
     playlist = [];
     purgePersistedUsbResumeState();
     favoriteKeys = loadFavoriteKeys();
+    loadPersistedFavoritesFromNative();
     btResumeState = loadBluetoothResumeState();
     btPlayMode = btResumeState.playMode || btPlayMode;
     applyBluetoothResumeStateToUi();
@@ -376,22 +353,25 @@
     renderBluetoothDevices();
     renderUsbFolders();
     updateUsbPlayModeButton();
+    updateSheetModeButton("favorite");
+    updateSheetModeButton("playlist");
     renderRadioPresets();
     updateRadioTuner();
-    updatePlayModeButton();
     updateBluetoothPlayModeButton();
     updateBluetoothPanels();
     updateBluetoothProgress();
-    updateRangeFill(volume);
     updateRangeFill(btVolume);
-    updateRangeFill(radioVolume);
     updateRangeFill(usbProgress);
-    updateRangeFill(usbVolume);
-    restorePersistedPlaylist();
+    if (usbVolume) updateRangeFill(usbVolume);
     notifyNativePlaybackState();
     restoreActiveModulePreference();
     window.onNativeAppPause = handleNativeAppPause;
     window.onNativeAppResume = handleNativeAppResume;
+    window.onNativePhoneCallStart = handleNativePhoneCallStart;
+    window.onNativePhoneCallEnd = handleNativePhoneCallEnd;
+    window.setTimeout(function () {
+      refreshUsbMusicState(false);
+    }, 300);
   }
 
   function bindEvents() {
@@ -402,42 +382,6 @@
       });
     });
 
-    var playlistScanBtn = document.getElementById("playlistScanBtn");
-    if (playlistScanBtn) {
-      playlistScanBtn.addEventListener("click", function () {
-        scanUsbMusic(true);
-      });
-    }
-
-    fileInput.addEventListener("change", function (event) {
-      safeAddFiles(event.target.files);
-      fileInput.value = "";
-    });
-
-    ["dragenter", "dragover"].forEach(function (eventName) {
-      dropZone.addEventListener(eventName, function (event) {
-        event.preventDefault();
-        dropZone.classList.add("is-dragging");
-      });
-    });
-
-    ["dragleave", "drop"].forEach(function (eventName) {
-      dropZone.addEventListener(eventName, function (event) {
-        event.preventDefault();
-        dropZone.classList.remove("is-dragging");
-      });
-    });
-
-    dropZone.addEventListener("drop", function (event) {
-      safeAddFiles(event.dataTransfer.files);
-    });
-
-    playPauseBtn.addEventListener("click", togglePlay);
-    playPauseBtn.addEventListener("dblclick", stopPlayback);
-    stopBtn.addEventListener("click", stopPlayback);
-    prevBtn.addEventListener("click", playPrevious);
-    nextBtn.addEventListener("click", playNext);
-    favoriteToggleBtn.addEventListener("click", toggleFavoriteForCurrentTrack);
     favoritePanelBtn.addEventListener("click", function () {
       toggleDrawer("favorite");
     });
@@ -445,11 +389,94 @@
       toggleDrawer("playlist");
     });
     drawerBackdrop.addEventListener("click", closeDrawers);
-    Array.prototype.forEach.call(document.querySelectorAll("[data-close-panel]"), function (button) {
-      button.addEventListener("click", closeDrawers);
-    });
-    clearBtn.addEventListener("click", clearPlaylist);
-    searchInput.addEventListener("input", renderPlaylist);
+
+    if (favoritePlayBtn) {
+      favoritePlayBtn.addEventListener("click", function () {
+        toggleSheetPlay("favorite");
+      });
+    }
+    if (playlistPlayBtn) {
+      playlistPlayBtn.addEventListener("click", function () {
+        toggleSheetPlay("playlist");
+      });
+    }
+    if (favoritePlayModeBtn) {
+      favoritePlayModeBtn.addEventListener("click", function () {
+        cycleSheetPlayMode("favorite");
+      });
+    }
+    if (playlistPlayModeBtn) {
+      playlistPlayModeBtn.addEventListener("click", function () {
+        cycleSheetPlayMode("playlist");
+      });
+    }
+    if (favoriteEditBtn) {
+      favoriteEditBtn.addEventListener("click", function () {
+        toggleSheetEdit("favorite");
+      });
+    }
+    if (playlistEditBtn) {
+      playlistEditBtn.addEventListener("click", function () {
+        toggleSheetEdit("playlist");
+      });
+    }
+
+    if (confirmOkBtn) {
+      confirmOkBtn.addEventListener("click", function () {
+        if (typeof pendingConfirmAction === "function") {
+          pendingConfirmAction();
+        }
+        hideConfirmDialog();
+      });
+    }
+    if (confirmCancelBtn) {
+      confirmCancelBtn.addEventListener("click", function () {
+        hideConfirmDialog();
+      });
+    }
+    if (confirmDialog) {
+      var confirmBackdrop = confirmDialog.querySelector(".confirm-backdrop");
+      if (confirmBackdrop) {
+        confirmBackdrop.addEventListener("click", function () {
+          hideConfirmDialog();
+        });
+      }
+    }
+
+    if (favoriteBatchDeleteBtn) {
+      favoriteBatchDeleteBtn.addEventListener("click", function () {
+        confirmDeleteBatch("favorite");
+      });
+    }
+    if (playlistBatchDeleteBtn) {
+      playlistBatchDeleteBtn.addEventListener("click", function () {
+        confirmDeleteBatch("playlist");
+      });
+    }
+
+    if (favoriteCancelBtn) {
+      favoriteCancelBtn.addEventListener("click", function () {
+        toggleSheetEdit("favorite");
+      });
+    }
+    if (playlistCancelBtn) {
+      playlistCancelBtn.addEventListener("click", function () {
+        toggleSheetEdit("playlist");
+      });
+    }
+    if (favoriteSelectAllBtn) {
+      favoriteSelectAllBtn.addEventListener("click", function () {
+        toggleFavoriteSelectAll();
+      });
+    }
+    if (playlistSelectAllBtn) {
+      playlistSelectAllBtn.addEventListener("click", function () {
+        togglePlaylistSelectAll();
+      });
+    }
+
+    initSheetDrag("favorite");
+    initSheetDrag("playlist");
 
     if (usbScanBtn) {
       usbScanBtn.addEventListener("click", function () {
@@ -457,33 +484,9 @@
       });
     }
 
-    shuffleBtn.addEventListener("click", function () {
-      cyclePlaybackMode();
+    btScanBtn.addEventListener("click", function () {
+      callNativeBluetooth("openBluetoothSettings");
     });
-
-    repeatBtn.addEventListener("click", function () {
-      cyclePlaybackMode();
-    });
-
-    progress.addEventListener("input", function () {
-      isSeeking = true;
-      updateRangeFill(progress);
-      currentTimeEl.textContent = formatTime(Number(progress.value));
-    });
-
-    progress.addEventListener("change", function () {
-      audio.currentTime = Number(progress.value);
-      isSeeking = false;
-    });
-
-    volume.addEventListener("input", function () {
-      audio.volume = Number(volume.value);
-      volumeValue.textContent = Math.round(audio.volume * 100) + "%";
-      updateRangeFill(volume);
-      applyMediaVolume(Number(volume.value));
-    });
-
-    btScanBtn.addEventListener("click", scanBluetoothDevices);
     btRefreshBtn.addEventListener("click", scanBluetoothDevices);
     btDisconnectBtn.addEventListener("click", disconnectBluetoothDevice);
     btPrevBtn.addEventListener("click", function () {
@@ -502,15 +505,6 @@
       applyMediaVolume(Number(btVolume.value));
     });
 
-    if (usbScanBtn) {
-      usbScanBtn.addEventListener("click", function () {
-        scanUsbMusic(true);
-      });
-    }
-    var usbSortBtn = document.getElementById("usbSortBtn");
-    if (usbSortBtn) {
-      usbSortBtn.addEventListener("click", cycleUsbSort);
-    }
     usbPlayModeBtn.addEventListener("click", function () {
       cycleUsbPlayMode();
     });
@@ -521,18 +515,14 @@
       toggleUsbFavorite();
     });
     usbProgress.addEventListener("input", function () {
+      isSeeking = true;
       usbCurrentTime.textContent = formatTime(Number(usbProgress.value));
       updateRangeFill(usbProgress);
     });
     usbProgress.addEventListener("change", function () {
       audio.currentTime = Number(usbProgress.value);
+      isSeeking = false;
       rememberUsbResumePoint();
-    });
-    usbVolume.addEventListener("input", function () {
-      audio.volume = Number(usbVolume.value);
-      usbVolumeValue.textContent = Math.round(audio.volume * 100) + "%";
-      updateRangeFill(usbVolume);
-      applyMediaVolume(Number(usbVolume.value));
     });
 
     radioScanBtn.addEventListener("click", function () {
@@ -542,12 +532,7 @@
     window.addEventListener("offline", handleRadioNetworkOffline);
     radioPlayBtn.addEventListener("click", toggleRadioPlayback);
     radioFavoriteBtn.addEventListener("click", function () {
-    if (radioMode === "favorites") {
-      radioMode = "all";
-      renderRadioPresets();
-    } else {
-      toggleRadioFavorite(Number(radioFrequency.textContent));
-    }
+    toggleRadioFavorite(Number(radioFrequency.textContent));
   });
     radioTuneDownBtn.addEventListener("click", function () {
       tuneRadioFrequency(-1);
@@ -560,12 +545,6 @@
     });
     radioNextStationBtn.addEventListener("click", function () {
       seekRadio(1);
-    });
-    radioVolumeDownBtn.addEventListener("click", function () {
-      adjustRadioVolume(-0.05);
-    });
-    radioVolumeUpBtn.addEventListener("click", function () {
-      adjustRadioVolume(0.05);
     });
     radioFmBtn.addEventListener("click", function () {
       switchRadioBand("FM");
@@ -616,7 +595,7 @@
     } else {
       stopBluetoothStateSync();
     }
-    document.body.classList.remove("module-local", "module-bluetooth", "module-radio", "module-usb");
+    document.body.classList.remove("module-bluetooth", "module-radio", "module-usb");
     document.body.classList.add("module-" + activeModule);
     applyModuleStatusBarTheme(activeModule);
 
@@ -630,8 +609,6 @@
       }
     });
 
-    localModule.classList.toggle("is-active", activeModule === "local");
-    localTransport.classList.toggle("is-active", activeModule === "local");
     bluetoothModule.classList.toggle("is-active", activeModule === "bluetooth");
     radioModule.classList.toggle("is-active", activeModule === "radio");
     usbModule.classList.toggle("is-active", activeModule === "usb");
@@ -661,7 +638,7 @@
 
   function saveActiveModulePreference(moduleName) {
     try {
-      window.localStorage.setItem(ACTIVE_MODULE_STORAGE_KEY, moduleName || "local");
+      window.localStorage.setItem(ACTIVE_MODULE_STORAGE_KEY, moduleName || "bluetooth");
     } catch (error) {
       // Storage is optional in browser preview.
     }
@@ -674,7 +651,7 @@
     } catch (error) {
       saved = "";
     }
-    if (saved === "bluetooth" || saved === "radio") {
+    if (saved === "bluetooth" || saved === "radio" || saved === "usb") {
       window.setTimeout(function () {
         switchModule(saved);
       }, 0);
@@ -705,42 +682,54 @@
   function handleNativeUsbEvent(rawEvent) {
     var event = typeof rawEvent === "string" ? parseJsonSafe(rawEvent) : rawEvent;
     if (!event) {
-      showUsbToast(String(rawEvent || "USB\u4e8b\u4ef6\u5904\u7406\u5931\u8d25"));
+      showUsbToast(String(rawEvent || "USB事件处理失败"));
       refreshUsbMusicState(false);
       return;
     }
-    if (event.message) {
+    if (event.message && event.type !== "scan_progress") {
       showUsbToast(event.message);
     }
     if (event.type === "connected" || event.type === "scan_started") {
       switchModule("usb");
       usbState.scanning = true;
       usbState.connected = true;
-      usbState.message = event.message || "USB \u8bfb\u53d6\u4e2d";
+      usbState.message = event.message || "USB 读取中";
       usbState.scanProgress = null;
       renderUsbState();
     } else if (event.type === "scan_progress") {
       usbState.scanning = true;
+      var foundCount = event.found || 0;
+      var totalCount = event.total || foundCount;
       usbState.scanProgress = {
         scanned: event.scanned || 0,
-        found: event.found || 0
+        found: foundCount,
+        total: totalCount
       };
+      if (foundCount > 0 && !usbPlaylist.length) {
+        showUsbToast("已发现 " + foundCount + " 首音乐文件，正在读取元数据...");
+      }
       renderUsbState();
       return;
     } else if (event.type === "scan_completed") {
       usbState.scanning = false;
       usbState.scanProgress = null;
-      usbState.message = event.message || "USB\u626b\u63cf\u5b8c\u6210";
+      usbState.message = event.message || "USB扫描完成";
       renderUsbState();
+      if (usbPlaylist.length) {
+        showUsbToast("扫描完成：" + usbPlaylist.length + " 首音乐");
+      }
+    } else if (event.type === "favorites_synced") {
+      handleFavoritesSyncedEvent(event);
+      return;
     } else if (event.type === "error") {
       usbState.scanning = false;
       usbState.connected = false;
-      usbState.message = event.message || "USB\u8bbe\u5907\u5f02\u5e38";
+      usbState.message = event.message || "USB设备异常";
       showUsbToast(event.message || "无法识别此设备");
       renderUsbState();
       return;
     } else if (event.type === "disconnected") {
-      handleUsbDisconnected(event.message || "USB\u8bbe\u5907\u5df2\u65ad\u5f00");
+      handleUsbDisconnected(event.message || "USB设备已断开");
       return;
     }
     refreshUsbMusicState(event.type !== "disconnected");
@@ -749,6 +738,9 @@
   function refreshUsbMusicState(openWhenConnected) {
     var state = callNativeUsb("getUsbMusicState");
     if (!state) {
+      if (activeModule === "usb") {
+        startIdleVisualizer();
+      }
       renderUsbState();
       return;
     }
@@ -854,7 +846,6 @@
       currentIndex = clampIndex(currentIndex);
     }
     saveFavoriteKeys();
-    savePlaylistMetadata();
     renderPlaylist();
     renderFavorites();
     updateFavoriteState();
@@ -987,18 +978,26 @@
 
   function getUsbSummaryText() {
     if (!usbState.connected) {
-      return "USB\u8bbe\u5907\u672a\u8fde\u63a5";
+      if (usbState.message && /无法识别|异常|错误/.test(usbState.message)) {
+        return usbState.message;
+      }
+      return "USB设备未连接";
     }
     if (usbState.scanning) {
       if (usbState.scanProgress) {
-        return "USB \u8bfb\u53d6\u4e2d (" + usbState.scanProgress.found + " \u9996\u97f3\u4e50)";
+        var found = usbState.scanProgress.found || 0;
+        var total = usbState.scanProgress.total || 0;
+        if (total > 0 && found < total) {
+          return "读取元数据中 (" + found + "/" + total + ")";
+        }
+        return "已发现 " + found + " 首音乐";
       }
-      return "USB \u8bfb\u53d6\u4e2d";
+      return "USB 读取中";
     }
     if (!usbPlaylist.length) {
       return "USB设备中无音乐文件...";
     }
-    return "\u5df2\u8bc6\u522b" + usbState.folders.length + " \u4e2a\u97f3\u4e50\u6587\u4ef6\u5939\uff0c" + usbPlaylist.length + " \u9996\u6709\u6548\u97f3\u9891";
+    return "已识别" + usbState.folders.length + " 个音乐文件夹，" + usbPlaylist.length + " 首有效音频";
   }
 
   function renderUsbFolders() {
@@ -1007,7 +1006,13 @@
     if (!usbState.connected || !usbState.folders.length) {
       var empty = document.createElement("li");
       empty.className = "empty-state";
-      empty.textContent = usbState.connected ? "USB\u8bbe\u5907\u4e2d\u65e0\u97f3\u4e50\u6587\u4ef6..." : "USB\u8bbe\u5907\u672a\u8fde\u63a5";
+      if (usbState.connected) {
+        empty.textContent = "USB\u8bbe\u5907\u4e2d\u65e0\u97f3\u4e50\u6587\u4ef6...";
+      } else if (usbState.message && /\u65e0\u6cd5\u8bc6\u522b|\u5f02\u5e38|\u9519\u8bef/.test(usbState.message)) {
+        empty.textContent = usbState.message;
+      } else {
+        empty.textContent = "USB\u8bbe\u5907\u672a\u8fde\u63a5";
+      }
       usbFolderList.appendChild(empty);
       return;
     }
@@ -1055,7 +1060,7 @@
   }
 
   function updateUsbModeButtons() {
-    if (usbFolderLoopBtn) {
+    if (usbFolderLoopBtn && usbFolderRandomBtn) {
       var random = usbPlayMode === "folder-random";
       usbFolderLoopBtn.classList.toggle("is-active", !random);
       usbFolderRandomBtn.classList.toggle("is-active", random);
@@ -1066,37 +1071,67 @@
 
   var USB_PLAYBACK_MODES = ["folder-loop", "folder-random", "single"];
 
+  var MODE_ICONS = {
+    "folder-loop": '<span class="play-mode-glyph" aria-hidden="true"><svg viewBox="0 0 36 36" focusable="false" fill="none"><path d="M25.7723 2.11621C26.2604 1.62806 27.0517 1.62806 27.5399 2.11621L32.7254 7.30078C33.2017 7.77727 33.2524 8.59314 32.7234 9.11914L32.7254 9.12109L27.5399 14.3066C27.0518 14.7948 26.2605 14.7946 25.7723 14.3066C25.2842 13.8185 25.2842 13.0272 25.7723 12.5391L28.7654 9.54492H16.3524C10.0271 9.54513 4.12798 14.6906 4.12775 20.7686V20.7695C4.12782 26.8476 10.027 31.9939 16.3524 31.9941H26.5135C29.0716 31.9941 31.3968 31.0057 33.1317 29.3887C33.6366 28.9181 34.4276 28.9454 34.8983 29.4502C35.3688 29.9552 35.3407 30.7471 34.8358 31.2178C32.6568 33.2485 29.7291 34.4941 26.5135 34.4941H16.3524C8.90003 34.4939 1.62781 28.4691 1.62775 20.7695V20.7686C1.62798 13.0691 8.90012 7.04513 16.3524 7.04492H28.9324L25.7723 3.88379C25.2841 3.39563 25.2841 2.60437 25.7723 2.11621Z" fill="currentColor"/></svg></span>',
+    "folder-random": '<span class="play-mode-glyph" aria-hidden="true"><svg viewBox="0 0 36 36" focusable="false" fill="none"><path d="M18.2676 18.418C18.2823 18.4326 28.9064 29.0347 31.3713 31.4944" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><path d="M3.87775 4.05811C3.8935 4.07383 14.0439 14.2032 14.0481 14.2074" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><path d="M31.6153 4.32031C22.3691 13.5473 13.1239 22.7732 3.87775 32.0002" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><path d="M24.1376 4H31.8389C31.8609 4 31.8777 4.01677 31.8777 4.03878V11.7241" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><path d="M24.1376 32H31.5711C31.7402 32 31.8777 31.8627 31.8777 31.738V24.3188" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg></span>',
+    "single": '<span class="play-mode-glyph" aria-hidden="true"><svg viewBox="0 0 36 36" focusable="false" fill="none"><path d="M25.7723 2.11621C26.2604 1.62806 27.0517 1.62806 27.5399 2.11621L32.7254 7.30078C33.2017 7.77727 33.2524 8.59314 32.7234 9.11914L32.7254 9.12109L27.5399 14.3066C27.0518 14.7948 26.2605 14.7946 25.7723 14.3066C25.2842 13.8185 25.2842 13.0272 25.7723 12.5391L28.7654 9.54492H16.3524C10.0271 9.54513 4.12798 14.6906 4.12775 20.7686V20.7695C4.12782 26.8476 10.027 31.9939 16.3524 31.9941H26.5135C29.0716 31.9941 31.3968 31.0057 33.1317 29.3887C33.6366 28.9181 34.4276 28.9454 34.8983 29.4502C35.3688 29.9552 35.3407 30.7471 34.8358 31.2178C32.6568 33.2485 29.7291 34.4941 26.5135 34.4941H16.3524C8.90003 34.4939 1.62781 28.4691 1.62775 20.7695V20.7686C1.62798 13.0691 8.90012 7.04513 16.3524 7.04492H28.9324L25.7723 3.88379C25.2841 3.39563 25.2841 2.60437 25.7723 2.11621Z" fill="currentColor"/><path d="M18.6834 27V18.167H15.6072V16.3652C16.3924 16.4062 17.0955 16.2334 17.7166 15.8467C18.3436 15.46 18.8182 14.9062 19.1404 14.1855H21.2059V27H19.949H18.6834Z" fill="currentColor"/></svg></span>'
+  };
+
+  var MODE_LABELS = {
+    "loop-list": "全部文件循环",
+    "loop-single": "单曲循环",
+    "shuffle": "全部文件随机"
+  };
+
+  function getModeSvg(mode) {
+    var map = {
+      "loop-list": MODE_ICONS["folder-loop"],
+      "loop-single": MODE_ICONS["single"],
+      "shuffle": MODE_ICONS["folder-random"]
+    };
+    return map[mode] || MODE_ICONS["folder-loop"];
+  }
+
   function cycleUsbPlayMode() {
     var next = (USB_PLAYBACK_MODES.indexOf(usbPlayMode) + 1) % USB_PLAYBACK_MODES.length;
     usbPlayMode = USB_PLAYBACK_MODES[next];
+    audio.loop = usbPlayMode === "single";
+    var sheetEquivalent = mainModeToSheet(usbPlayMode);
+    playlistPlayMode = sheetEquivalent;
+    favoritePlayMode = sheetEquivalent;
     updateUsbModeButtons();
     updateUsbPlayModeButton();
+    updateSheetModeButton("favorite");
+    updateSheetModeButton("playlist");
     showUsbToast(getUsbPlayModeLabel(usbPlayMode));
+    if (usbShuffleHistory.length) {
+      usbShuffleHistory = [];
+    }
+    if (activeAudioSource === "usb" && usbPlaylist.length && audio.paused) {
+      audio.play()["catch"](function () {
+        updateUsbPlaybackUi();
+      });
+    }
     rememberUsbResumePoint();
   }
 
   function getUsbPlayModeLabel(mode) {
     var labels = {
-      "folder-loop": "\u6587\u4ef6\u5939\u5faa\u73af",
-      "folder-random": "\u6587\u4ef6\u5939\u968f\u673a",
-      "single": "\u5355\u66f2\u5faa\u73af"
+      "folder-loop": "全部文件循环",
+      "folder-random": "全部文件随机",
+      "single": "单曲循环"
     };
     return labels[mode] || labels["folder-loop"];
   }
 
   function updateUsbPlayModeButton() {
-    var icons = {
-      "folder-loop": '<span class="play-mode-glyph" aria-hidden="true"><svg class="play-mode-svg" viewBox="0 0 36 36" focusable="false" fill="none"><path d="M25.7723 2.11621C26.2604 1.62806 27.0517 1.62806 27.5399 2.11621L32.7254 7.30078C33.2017 7.77727 33.2524 8.59314 32.7234 9.11914L32.7254 9.12109L27.5399 14.3066C27.0518 14.7948 26.2605 14.7946 25.7723 14.3066C25.2842 13.8185 25.2842 13.0272 25.7723 12.5391L28.7654 9.54492H16.3524C10.0271 9.54513 4.12798 14.6906 4.12775 20.7686V20.7695C4.12782 26.8476 10.027 31.9939 16.3524 31.9941H26.5135C29.0716 31.9941 31.3968 31.0057 33.1317 29.3887C33.6366 28.9181 34.4276 28.9454 34.8983 29.4502C35.3688 29.9552 35.3407 30.7471 34.8358 31.2178C32.6568 33.2485 29.7291 34.4941 26.5135 34.4941H16.3524C8.90003 34.4939 1.62781 28.4691 1.62775 20.7695V20.7686C1.62798 13.0691 8.90012 7.04513 16.3524 7.04492H28.9324L25.7723 3.88379C25.2841 3.39563 25.2841 2.60437 25.7723 2.11621Z" fill="currentColor"/></svg></span>',
-      "folder-random": '<span class="play-mode-glyph" aria-hidden="true"><svg class="play-mode-svg" viewBox="0 0 36 36" focusable="false" fill="none"><path d="M18.2676 18.418C18.2823 18.4326 28.9064 29.0347 31.3713 31.4944" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><path d="M3.87775 4.05811C3.8935 4.07383 14.0439 14.2032 14.0481 14.2074" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><path d="M31.6153 4.32031C22.3691 13.5473 13.1239 22.7732 3.87775 32.0002" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><path d="M24.1376 4H31.8389C31.8609 4 31.8777 4.01677 31.8777 4.03878V11.7241" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><path d="M24.1376 32H31.5711C31.7402 32 31.8777 31.8627 31.8777 31.738V24.3188" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg></span>',
-      "single": '<span class="play-mode-glyph" aria-hidden="true"><svg class="play-mode-svg" viewBox="0 0 36 36" focusable="false" fill="none"><path d="M25.7723 2.11621C26.2604 1.62806 27.0517 1.62806 27.5399 2.11621L32.7254 7.30078C33.2017 7.77727 33.2524 8.59314 32.7234 9.11914L32.7254 9.12109L27.5399 14.3066C27.0518 14.7948 26.2605 14.7946 25.7723 14.3066C25.2842 13.8185 25.2842 13.0272 25.7723 12.5391L28.7654 9.54492H16.3524C10.0271 9.54513 4.12798 14.6906 4.12775 20.7686V20.7695C4.12782 26.8476 10.027 31.9939 16.3524 31.9941H26.5135C29.0716 31.9941 31.3968 31.0057 33.1317 29.3887C33.6366 28.9181 34.4276 28.9454 34.8983 29.4502C35.3688 29.9552 35.3407 30.7471 34.8358 31.2178C32.6568 33.2485 29.7291 34.4941 26.5135 34.4941H16.3524C8.90003 34.4939 1.62781 28.4691 1.62775 20.7695V20.7686C1.62798 13.0691 8.90012 7.04513 16.3524 7.04492H28.9324L25.7723 3.88379C25.2841 3.39563 25.2841 2.60437 25.7723 2.11621Z" fill="currentColor"/><path d="M18.6834 27V18.167H15.6072V16.3652C16.3924 16.4062 17.0955 16.2334 17.7166 15.8467C18.3436 15.46 18.8182 14.9062 19.1404 14.1855H21.2059V27H19.949H18.6834Z" fill="currentColor"/></svg></span>'
-    };
     var modeIcons = {
-      "folder-loop": icons["folder-loop"],
-      "folder-random": icons["folder-random"],
-      "single": icons["single"]
+      "folder-loop": MODE_ICONS["folder-loop"],
+      "folder-random": MODE_ICONS["folder-random"],
+      "single": MODE_ICONS["single"]
     };
     if (usbPlayModeBtn) {
-      usbPlayModeBtn.innerHTML = modeIcons[usbPlayMode] || icons["folder-loop"];
+      usbPlayModeBtn.innerHTML = modeIcons[usbPlayMode] || MODE_ICONS["folder-loop"];
       usbPlayModeBtn.title = getUsbPlayModeLabel(usbPlayMode);
       usbPlayModeBtn.setAttribute("aria-label", usbPlayModeBtn.title);
       usbPlayModeBtn.setAttribute("data-mode", usbPlayMode);
@@ -1130,6 +1165,7 @@
       favoriteKeys.push(key);
       saveFavoriteKeys();
     }
+    syncFavoriteToNative(track, true);
     updateUsbFavoriteButton();
     renderFavorites();
   }
@@ -1139,9 +1175,85 @@
     favoriteKeys = favoriteKeys.filter(function (trackKey) {
       return trackKey !== key;
     });
+    favoriteIds = favoriteIds.filter(function (trackId) {
+      return String(trackId).indexOf("usb:") !== 0;
+    });
     saveFavoriteKeys();
+    syncFavoriteToNative(track, false);
     updateUsbFavoriteButton();
     renderFavorites();
+  }
+
+  function syncFavoriteToNative(track, isAdding) {
+    if (!window.MusicBridge) return;
+    try {
+      if (isAdding) {
+        MusicBridge.addFavoriteTrack(
+          track.path || "",
+          track.artist || "",
+          track.title || "",
+          track.album || "",
+          String(track.fileSize || 0),
+          track.durationLabel || "--:--",
+          track.coverUrl || ""
+        );
+      } else {
+        MusicBridge.removeFavoriteTrack(track.artist || "", track.title || "");
+      }
+    } catch (error) {
+      // Native sync is best-effort; localStorage remains primary
+    }
+  }
+
+  function loadPersistedFavoritesFromNative() {
+    if (!window.MusicBridge || typeof MusicBridge.getPersistedFavorites !== "function") {
+      return;
+    }
+    try {
+      var raw = MusicBridge.getPersistedFavorites();
+      if (!raw) return;
+      var arr = JSON.parse(raw);
+      if (!Array.isArray(arr) || !arr.length) return;
+      var keys = [];
+      for (var i = 0; i < arr.length; i++) {
+        var fav = arr[i] || {};
+        var artist = fav.artist || "";
+        var title = fav.title || "";
+        if (!artist && !title) continue;
+        var key = [artist, title].join("::").toLowerCase();
+        keys.push(key);
+      }
+      if (keys.length) {
+        var merged = favoriteKeys.slice();
+        for (var j = 0; j < keys.length; j++) {
+          if (merged.indexOf(keys[j]) < 0) {
+            merged.push(keys[j]);
+          }
+        }
+        favoriteKeys = merged;
+        saveFavoriteKeys();
+      }
+    } catch (error) {
+      // Native load is best-effort
+    }
+  }
+
+  function handleFavoritesSyncedEvent(event) {
+    if (!event || !event.favorites || !event.favorites.length) return;
+    var matchedKeys = [];
+    for (var i = 0; i < event.favorites.length; i++) {
+      var track = event.favorites[i] || {};
+      var key = getTrackFavoriteKey(track);
+      if (key && favoriteKeys.indexOf(key) < 0) {
+        favoriteKeys.push(key);
+        matchedKeys.push(key);
+      }
+    }
+    if (matchedKeys.length) {
+      saveFavoriteKeys();
+      renderFavorites();
+      updateUsbFavoriteButton();
+    }
   }
 
   function updateUsbFavoriteButton() {
@@ -1182,11 +1294,6 @@
         return track.id === resume.trackId;
       });
       if (index >= 0) {
-        if (resume.playMode) {
-          usbPlayMode = resume.playMode;
-          updateUsbModeButtons();
-          updateUsbPlayModeButton();
-        }
         loadUsbTrack(index, true, resume.currentTime || 0);
         return;
       }
@@ -1201,6 +1308,14 @@
     return usbPlaylist.findIndex(function (track) {
       return track.id === resume.trackId;
     });
+  }
+
+  function playUsbTrackAt(index) {
+    loadUsbTrack(index, true);
+  }
+
+  function switchToModule(module) {
+    switchModule(module);
   }
 
   function loadUsbTrack(index, autoplay, startSeconds) {
@@ -1226,6 +1341,7 @@
     usbExpandedFolderPath = track.folderPath || usbExpandedFolderPath;
     usbTrackTitle.textContent = track.title;
     usbTrackMeta.textContent = track.artist + " · " + (track.folderName || "USB\u97f3\u4e50");
+    updateUsbAlbumArt(track);
     usbDuration.textContent = track.durationLabel || "0:00";
     usbCurrentTime.textContent = formatTime(startSeconds || 0);
     usbProgress.value = startSeconds || 0;
@@ -1236,12 +1352,33 @@
       usbResumePending = startSeconds;
     }
     if (autoplay) {
-      applyMediaVolume(Number(usbVolume.value));
+      applyMediaVolume(audio.volume);
       audio.play()["catch"](function () {
         updateUsbPlaybackUi();
       });
     }
     rememberUsbResumePoint();
+  }
+
+  function updateUsbAlbumArt(track) {
+    if (!usbAlbumArt || !usbBgOverlay) return;
+    if (track.coverUrl) {
+      usbAlbumArt.onload = function () {
+        usbAlbumArt.classList.add("has-cover");
+        usbBgOverlay.style.backgroundImage = "url(\"" + track.coverUrl + "\")";
+        usbBgOverlay.classList.add("is-active");
+      };
+      usbAlbumArt.onerror = function () {
+        usbAlbumArt.classList.remove("has-cover");
+        usbBgOverlay.classList.remove("is-active");
+        usbBgOverlay.style.backgroundImage = "none";
+      };
+      usbAlbumArt.src = track.coverUrl;
+    } else {
+      usbAlbumArt.classList.remove("has-cover");
+      usbBgOverlay.classList.remove("is-active");
+      usbBgOverlay.style.backgroundImage = "none";
+    }
   }
 
   function toggleUsbPlayback() {
@@ -1265,6 +1402,11 @@
   function playPreviousUsbTrack() {
     if (audio.currentTime > 3) {
       audio.currentTime = 0;
+      if (audio.paused && activeAudioSource === "usb") {
+        audio.play()["catch"](function () {
+          updateUsbPlaybackUi();
+        });
+      }
       return;
     }
     loadUsbTrack(getAdjacentUsbIndex(-1), true, 0);
@@ -1275,9 +1417,6 @@
   }
 
   function getAdjacentUsbIndex(direction) {
-    if (usbPlayMode === "single") {
-      return currentUsbIndex;
-    }
     var current = usbPlaylist[currentUsbIndex];
     var folderTracks = usbPlaylist.filter(function (track) {
       return current && track.folderPath === current.folderPath;
@@ -1285,16 +1424,44 @@
     if (!folderTracks.length) {
       return currentUsbIndex;
     }
-    if (usbPlayMode === "folder-random" && folderTracks.length > 1) {
-      var randomTrack = current;
-      while (randomTrack === current) {
-        randomTrack = folderTracks[Math.floor(Math.random() * folderTracks.length)];
-      }
-      return usbPlaylist.indexOf(randomTrack);
-    }
     var folderIndex = folderTracks.indexOf(current);
     var nextFolderIndex = (folderIndex + direction + folderTracks.length) % folderTracks.length;
     return usbPlaylist.indexOf(folderTracks[nextFolderIndex]);
+  }
+
+  function getAutoAdvanceUsbIndex() {
+    if (!usbPlaylist.length) {
+      return currentUsbIndex;
+    }
+    if (usbPlayMode === "single") {
+      return currentUsbIndex;
+    }
+    if (usbPlayMode === "folder-random") {
+      if (usbPlaylist.length <= 1) {
+        return currentUsbIndex;
+      }
+      if (usbShuffleHistory.indexOf(currentUsbIndex) < 0) {
+        usbShuffleHistory.push(currentUsbIndex);
+      }
+      var unplayed = [];
+      for (var i = 0; i < usbPlaylist.length; i++) {
+        if (usbShuffleHistory.indexOf(i) < 0) {
+          unplayed.push(i);
+        }
+      }
+      if (!unplayed.length) {
+        usbShuffleHistory = [currentUsbIndex];
+        for (var j = 0; j < usbPlaylist.length; j++) {
+          if (j !== currentUsbIndex) {
+            unplayed.push(j);
+          }
+        }
+      }
+      var pick = unplayed[Math.floor(Math.random() * unplayed.length)];
+      usbShuffleHistory.push(pick);
+      return pick;
+    }
+    return (currentUsbIndex + 1) % usbPlaylist.length;
   }
 
   function clampUsbIndex(index) {
@@ -1311,6 +1478,7 @@
     var playing = activeAudioSource === "usb" && !audio.paused;
     usbPlayBtn.classList.toggle("is-playing", playing);
     usbPlayBtn.setAttribute("aria-pressed", playing ? "true" : "false");
+    usbPlayBtn.setAttribute("title", playing ? "暂停" : "播放");
     if (activeAudioSource !== "usb") {
       return;
     }
@@ -1332,7 +1500,6 @@
       trackId: track.id,
       trackIndex: currentUsbIndex,
       currentTime: audio.currentTime || 0,
-      playMode: usbPlayMode,
       timestamp: Date.now()
     };
     try {
@@ -1393,11 +1560,20 @@
     usbState = createEmptyUsbState(message);
     usbPlaylist = [];
     currentUsbIndex = 0;
+    usbPlayMode = "folder-loop";
+    usbShuffleHistory = [];
+    audio.loop = false;
     usbExpandedFolderPath = "";
     removeUsbTracksFromMainPlaylist();
-    usbTrackTitle.textContent = "\u672a\u9009\u62e9\u97f3\u4e50";
-    usbTrackMeta.textContent = "USB\u8bbe\u5907\u672a\u8fde\u63a5";
+    usbTrackTitle.textContent = "";
+    usbTrackMeta.textContent = "";
+    updateUsbAlbumArt({ coverUrl: null });
+    updateUsbModeButtons();
+    updateUsbPlayModeButton();
     renderUsbState();
+    if (activeModule === "usb") {
+      startIdleVisualizer();
+    }
     if (wasPlayingUsb) {
       showUsbToast("USB设备已移除，播放已停止");
     } else {
@@ -1858,6 +2034,9 @@
     setBluetoothStatus(message);
     if (/\u84dd\u7259\u97f3\u9891\u8bbe\u5907\u5df2\u8fde\u63a5|\u84dd\u7259\u97f3\u7bb1\u63a5\u6536\u8bbe\u5907\u5df2\u8fde\u63a5/.test(message)) {
       optimisticBtConnectedUntil = 0;
+      btConnectionState = "connected";
+      btLastError = "";
+      btErrorRecoverySuggestion = "";
       setPendingBluetoothOperation("", "");
       startBluetoothStateSync();
       window.setTimeout(function () {
@@ -1870,13 +2049,37 @@
       }, 120);
     } else if (/\u84dd\u7259\u97f3\u9891\u8bbe\u5907\u5df2\u65ad\u5f00|\u84dd\u7259\u97f3\u7bb1\u63a5\u6536\u8bbe\u5907\u5df2\u65ad\u5f00|\u5df2\u65ad\u5f00\u8fde\u63a5/.test(message)) {
       btDisconnectNoticeUntil = Date.now() + 3500;
+      btConnectionState = "disconnected";
       rememberBluetoothResumePoint({ shouldResume: isBtPlaying || btResumeState.shouldResume, wasPlaying: isBtPlaying });
       resetBluetoothPlaybackState();
       setBluetoothStatus("\u5df2\u65ad\u5f00\u8fde\u63a5");
       setPendingBluetoothOperation("", "");
+    } else if (/\u84dd\u7259\u5df2\u5173\u95ed/.test(message)) {
+      btConnectionState = "idle";
+      btLastError = "蓝牙已关闭";
+      btErrorRecoverySuggestion = "请在系统设置中开启蓝牙";
+      resetBluetoothPlaybackState();
+      setBluetoothStatus("蓝牙已关闭，请开启后重试");
+      setPendingBluetoothOperation("", "");
+    } else if (/\u84dd\u7259\u5df2\u5f00\u542f/.test(message)) {
+      btConnectionState = "idle";
+      btLastError = "";
+      btErrorRecoverySuggestion = "";
+      setBluetoothStatus("蓝牙已开启");
+    } else if (/\u84dd\u7259\u81ea\u52a8\u91cd\u8fde/.test(message)) {
+      btConnectionState = "connecting";
+      setBluetoothStatus(message);
+    } else if (/\u84dd\u7259\u8fde\u63a5\u5df2\u5e38\u65ad\u5f00/.test(message)) {
+      btLastError = "连接异常断开";
+      btErrorRecoverySuggestion = "系统正在自动重连，若多次失败请手动重新连接";
+      btConnectionState = "error";
     } else if (/\u5df2\u65ad\u5f00|\u641c\u7d22\u5b8c\u6210|\u540d\u79f0\u5df2\u66f4\u65b0|\u914d\u5bf9\u5931\u8d25|\u5df2\u53d6\u6d88|\u521d\u59cb\u5316\u8d85\u65f6|\u786e\u8ba4\u8d85\u65f6|\u7cfb\u7edf\u9650\u5236/.test(message)) {
+      btLastError = message;
+      btErrorRecoverySuggestion = "请检查蓝牙权限和设备状态后重试";
+      btConnectionState = "error";
       setPendingBluetoothOperation("", "");
     } else if (/\u6b63\u5728\u641c\u7d22|\u6b63\u5728\u626b\u63cf/.test(message)) {
+      btConnectionState = "discovering";
       startBluetoothDiscoveryRefreshLoop();
     }
     scheduleBluetoothRefresh();
@@ -1975,6 +2178,9 @@
     if (state.connected) {
       btDisconnectNoticeUntil = 0;
       maybeAutoPlayBluetooth("state");
+    }
+    if (state.connectionState && typeof btConnectionState !== "undefined") {
+      btConnectionState = state.connectionState;
     }
   }
 
@@ -2138,6 +2344,13 @@
       btPlaybackPendingTimer = 0;
     }
     updateBluetoothPanels();
+    if (activeModule === "bluetooth") {
+      if (visualPlaying) {
+        startVisualizer();
+      } else {
+        stopVisualizer();
+      }
+    }
   }
 
   function getBluetoothPlaybackStateLabel(state) {
@@ -2212,12 +2425,12 @@
 
   function getBluetoothPlayModeLabel() {
     if (btPlayMode === "single") {
-      return "\u5355\u66f2\u5faa\u73af";
+      return "单曲循环";
     }
     if (btPlayMode === "random") {
-      return "\u968f\u673a\u64ad\u653e";
+      return "全部文件随机";
     }
-    return "\u5168\u90e8\u5faa\u73af";
+    return "全部文件循环";
   }
 
   function updateBluetoothTrackInfo(device) {
@@ -2465,20 +2678,20 @@
     radioLocationToken = token;
     radioScanToken += 1;
     window.clearTimeout(radioScanTimer);
-    setRadioLoading(true, "\u9700\u8981\u83b7\u53d6\u5f53\u524d\u4f4d\u7f6e\u6765\u5339\u914d\u672c\u5730\u5e7f\u64ad\u9891\u9053\uff1b\u4f4d\u7f6e\u4fe1\u606f\u53ea\u7528\u4e8e\u672c\u6b21\u9891\u9053\u5237\u65b0\uff0c\u4e0d\u4f1a\u4fdd\u5b58\u6216\u4e0a\u4f20\u3002");
+    setRadioLoading(true, "需要获取当前位置来匹配本地广播频道，位置信息只用于本次频道刷新，不会保存或上传。");
     requestRadioLocation().then(function (position) {
       if (token !== radioLocationToken) {
         return;
       }
       applyRadioRegion(selectRadioRegionForCoordinates(position.coords.latitude, position.coords.longitude));
-      setRadioLoading(true, "\u5df2\u5b9a\u4f4d\u5230 " + radioRegionName + "\uff0c\u6b63\u5728\u5237\u65b0\u672c\u5730\u9891\u9053...");
+      setRadioLoading(true, "已获取位置信息，正在刷新本地频道...");
       scanRadioStations();
     })["catch"](function () {
       if (token !== radioLocationToken) {
         return;
       }
       applyRadioRegion(null);
-      setRadioLoading(true, "\u672a\u83b7\u5f97\u4f4d\u7f6e\u6743\u9650\uff0c\u5df2\u4f7f\u7528\u9ed8\u8ba4\u53ef\u7528\u9891\u9053\u5217\u8868\u3002");
+      setRadioLoading(true, "未获得位置权限，已使用默认频道列表。");
       scanRadioStations();
     });
   }
@@ -2520,8 +2733,7 @@
     radioScanToken = token;
     window.clearTimeout(radioScanTimer);
     clearRadioStreamReconnect();
-    setRadioLoading(true, "\u5f53\u524d\u65e0\u7f51\u7edc\uff0c\u6b63\u5728\u68c0\u6d4b\u8bbe\u5907\u79bb\u7ebfFM\u63a5\u6536\u80fd\u529b...");
-    radioMode = "all";
+    setRadioLoading(true, "当前无网络，正在检测设备离线FM接收能力...");
     radioOfflineState = getNativeOfflineRadioState();
     if (!radioOfflineState.available || !window.MusicBridge || typeof window.MusicBridge.scanOfflineRadioStations !== "function") {
       setRadioLoading(false, (radioOfflineState.message || "\u672a\u68c0\u6d4b\u5230\u53ef\u7528\u7684\u79bb\u7ebfFM\u786c\u4ef6\u63a5\u53e3") + "\uff1b\u65e0\u7f51\u7edc\u65f6\u4e0d\u4f1a\u4f7f\u7528\u6a21\u62df\u58f0\u97f3\u5192\u5145\u771f\u5b9e\u5e7f\u64ad\u3002");
@@ -2606,7 +2818,7 @@
 
   function applyRadioRegion(region) {
     if (!region) {
-      radioRegionName = "Default";
+      radioRegionName = "默认";
       RADIO_STATION_CATALOG.FM = cloneRadioStations(RADIO_DEFAULT_STATION_CATALOG.FM);
       RADIO_STATION_CATALOG.AM = cloneRadioStations(RADIO_DEFAULT_STATION_CATALOG.AM);
       return;
@@ -2633,12 +2845,11 @@
   function renderRadioPresets() {
     presetGrid.innerHTML = "";
     var visiblePresets = getVisibleRadioPresets();
-    radioModeLabel.textContent = radioMode === "favorites" ? "\u6536\u85cf\u7535\u53f0" : radioRegionName + " \u9644\u8fd1\u9891\u9053";
 
     if (!visiblePresets.length) {
       var empty = document.createElement("p");
       empty.className = "empty-state radio-empty";
-      empty.textContent = radioMode === "favorites" ? "\u6682\u65e0\u6536\u85cf\u7535\u53f0\uff0c\u70b9\u51fb\u661f\u6807\u6536\u85cf\u5f53\u524d\u9891\u9053" : "\u6682\u65e0\u53ef\u63a5\u6536\u9891\u9053\uff0c\u70b9\u51fb\u81ea\u52a8\u641c\u7d22";
+      empty.textContent = "暂无收藏";
       presetGrid.appendChild(empty);
       updateRadioFavoriteState();
       return;
@@ -2655,11 +2866,18 @@
       button.type = "button";
       button.title = stationInfo.name + " - " + stationInfo.program + "\uff0c\u4fe1\u53f7 " + strength + "\u7ea7";
       button.setAttribute("aria-label", stationInfo.name + " " + formatRadioFrequency(frequency) + " " + getRadioBandConfig().unit + "\uff0c\u4fe1\u53f7 " + strength + "\u7ea7");
+      var unit = getRadioBandConfig().unit;
+      var waveHtml;
+      if (isActive) {
+        waveHtml = '<svg class="preset-wave-active" width="70" height="12" viewBox="0 0 70 12" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
+          '<path d="M13.8477 12H12.959V4.4209H13.8477V12ZM26.8066 12H25.917V4.4209H26.8066V12ZM52.7227 12H51.833V4.4209H52.7227V12ZM57.042 12H56.1523V4.4209H57.042V12ZM0.889648 11.999H0V0H0.889648V11.999ZM5.20898 11.999H4.31934V0H5.20898V11.999ZM9.52832 11.999H8.63867V2.52637H9.52832V11.999ZM18.167 11.999H17.2783V7.57812H18.167V11.999ZM22.4873 11.999H21.5977V7.57812H22.4873V11.999ZM31.126 11.999H30.2363V2.52637H31.126V11.999ZM35.4453 11.999H34.5557V0H35.4453V11.999ZM39.7646 11.999H38.875V0H39.7646V11.999ZM44.084 11.999H43.1943V2.52637H44.084V11.999ZM48.4033 11.999H47.5137V2.52637H48.4033V11.999ZM61.3613 11.999H60.4717V2.52637H61.3613V11.999ZM65.6807 11.999H64.792V2.52637H65.6807V11.999ZM70 11.999H69.1113V0H70V11.999Z" fill="currentColor"/>' +
+          '</svg>';
+      } else {
+        waveHtml = '<img class="preset-wave" src="assets/radio/wave.svg" alt="" aria-hidden="true" />';
+      }
       button.innerHTML =
-        renderRadioSignalBars(strength) +
-        '<span class="preset-main">' + formatRadioFrequency(frequency) + " " + getRadioBandConfig().unit + '</span>' +
-        '<small class="preset-name">' + stationInfo.name + '</small>' +
-        (isFavorite ? '<span class="preset-star" aria-hidden="true">&#9733;</span>' : "");
+        '<span class="preset-freq">' + formatRadioFrequency(frequency) + '</span>' +
+        waveHtml;
       button.addEventListener("click", function () {
         selectPreset(station.index);
       });
@@ -2677,7 +2895,7 @@
     return radioPresets.map(function (frequency, index) {
       return { frequency: frequency, index: index };
     }).filter(function (station) {
-      return radioMode !== "favorites" || isRadioFavorite(station.frequency);
+      return isRadioFavorite(station.frequency);
     });
   }
 
@@ -2723,15 +2941,15 @@
 
   function getRadioSignalLabel(strength) {
     if (strength >= 5) {
-      return "\u4fe1\u53f7\u5f31";
+      return "\u4fe1\u53f7\u5f3a";
     }
     if (strength >= 4) {
-      return "信″彿鑹ソ";
+      return "\u4fe1\u53f7\u826f\u597d";
     }
     if (strength >= 3) {
       return "\u53ef\u63a5\u6536";
     }
-    return "\u4fe1\u53f7\u5f3a";
+    return "\u4fe1\u53f7\u5f31";
   }
 
   function renderRadioSignalBars(strength) {
@@ -2825,9 +3043,9 @@
     var token = radioScanToken + 1;
     radioScanToken = token;
     window.clearTimeout(radioScanTimer);
-    setRadioLoading(true, "\u6b63\u5728\u5237\u65b0 " + radioRegionName + " " + radioBand + " \u672c\u5730\u5e7f\u64ad\u9891\u9053...");
-    radioStatus.textContent = "\u6b63\u5728\u81ea\u52a8\u641c\u7d22 " + radioBand + " \u9644\u8fd1\u53ef\u63a5\u6536\u9891\u9053...";
-    radioMode = "all";
+    setRadioLoading(true, "正在刷新 " + radioBand + " 广播频道...");
+    radioStatus.textContent = "正在自动搜索 " + radioBand + " 可接收频道...";
+    if (radioSearchModal) radioSearchModal.hidden = false;
     radioPresets = [];
     renderRadioPresets();
     radioFmBtn.disabled = true;
@@ -2867,6 +3085,7 @@
       radioPresets = radioPresets.slice(-200);
     }
     saveRadioPresets();
+    if (radioSearchModal) radioSearchModal.hidden = true;
     radioFmBtn.disabled = false;
     radioAmBtn.disabled = false;
     radioTuneDownBtn.disabled = false;
@@ -2885,11 +3104,11 @@
     }
     renderRadioPresets();
     radioStatus.textContent = radioPresets.length
-      ? "搜索完成，已自动保存 " + radioPresets.length + " 个电台"
+      ? "搜索完成，共搜索到 " + radioPresets.length + " 个电台"
       : "未搜索到可接收频道，请检查天线或稍后重试";
     setRadioLoading(false, radioPresets.length
-      ? "\u641c\u626b\u5b8c\u6210\uff1a\u5df2\u81ea\u52a8\u4fdd\u5b58 " + radioRegionName + " " + radioPresets.length + " \u4e2a\u7535\u53f0"
-      : "\u672a\u627e\u5230\u53ef\u64ad\u653e\u9891\u9053\uff0c\u8bf7\u68c0\u67e5\u7f51\u7edc\u6216\u7a0d\u540e\u91cd\u8bd5");
+      ? "扫描完成，共发现 " + radioPresets.length + " 个可接收电台"
+      : "未找到可播放频道，请检查网络或稍后重试");
     if (radioPresets.length && isRadioPlaying) {
       restartRadioPlaybackForCurrentStation();
     }
@@ -2911,20 +3130,23 @@
       radioFavoriteFrequencies = radioFavoriteFrequencies.filter(function (item) {
         return getRadioFavoriteKey(item) !== key;
       });
-      radioStatus.textContent = "\u5df2\u53d6\u6d88\u6536\u85cf" + formatRadioFrequency(frequency) + " " + getRadioBandConfig().unit;
+      radioStatus.textContent = "已取消收藏" + formatRadioFrequency(frequency) + " " + getRadioBandConfig().unit;
     } else {
       radioFavoriteFrequencies.push(frequency);
       radioFavoriteFrequencies = uniqueSortedFrequencies(radioFavoriteFrequencies);
-      radioStatus.textContent = "\u5df2\u6536\u85cf" + formatRadioFrequency(frequency) + " " + getRadioBandConfig().unit;
+      if (radioPresets.findIndex(function (item) { return getRadioFrequencyKey(item) === key; }) < 0) {
+        radioPresets.push(frequency);
+      }
+      radioStatus.textContent = "已收藏" + formatRadioFrequency(frequency) + " " + getRadioBandConfig().unit;
     }
     saveRadioFavorites();
+    updateRadioFavoriteState();
     renderRadioPresets();
   }
 
   function toggleRadioMode() {
-    radioMode = radioMode === "all" ? "favorites" : "all";
     renderRadioPresets();
-    radioStatus.textContent = radioMode === "favorites" ? "已切换到收藏电台模式" : "已切换到全部电台模式";
+    radioStatus.textContent = "收藏列表已更新";
   }
 
   function storeCurrentRadioStation() {
@@ -2950,11 +3172,8 @@
   }
 
   function syncRadioVolumeDisplay(prefix) {
-    radioVolumeValue.textContent = Math.round(Number(radioVolume.value) * 100) + "%";
-    updateRangeFill(radioVolume);
     applyRadioVolume();
     applyMediaVolume(Number(radioVolume.value));
-    radioStatus.textContent = prefix + radioVolumeValue.textContent;
   }
 
   function isRadioFavorite(frequency) {
@@ -2967,7 +3186,6 @@
   function updateRadioFavoriteState() {
     var isFavorite = isRadioFavorite(Number(radioFrequency.textContent));
     radioFavoriteBtn.setAttribute("aria-pressed", String(isFavorite));
-    radioFavoriteBtn.style.color = isFavorite ? "#FF6B6B" : "";
   }
 
   function uniqueSortedFrequencies(frequencies) {
@@ -3090,6 +3308,14 @@
     updateRadioRailLabels(config);
     var percent = ((frequency - config.min) / (config.max - config.min)) * 100;
     radioNeedle.parentElement.style.setProperty("--radio-fill", percent + "%");
+    var track = radioNeedle.parentElement;
+    if (track) {
+      track.classList.add("is-tuning");
+      window.clearTimeout(updateRadioTuner._tuneTimer);
+      updateRadioTuner._tuneTimer = window.setTimeout(function () {
+        track.classList.remove("is-tuning");
+      }, 400);
+    }
     updateRadioTone(frequency);
     updateRadioSignal(frequency);
     updateRadioProgramInfo(frequency);
@@ -3105,7 +3331,6 @@
     window.clearTimeout(radioScanTimer);
     radioScanBtn.disabled = false;
     radioBand = band;
-    radioMode = "all";
     radioPresets = getDefaultRadioPresets(band);
     var config = getRadioBandConfig();
     var savedFreq = lastRadioFrequency[band] || radioPresets[Math.min(band === "AM" ? 1 : 3, Math.max(0, radioPresets.length - 1))];
@@ -3114,8 +3339,8 @@
     if (currentPresetIndex === -1) currentPresetIndex = Math.min(band === "AM" ? 1 : 3, Math.max(0, radioPresets.length - 1));
     radioFmBtn.classList.toggle("is-active", band === "FM");
     radioAmBtn.classList.toggle("is-active", band === "AM");
-    if (radioFreqMin) radioFreqMin.textContent = config.min;
-    if (radioFreqMax) radioFreqMax.textContent = config.max;
+    if (radioFreqMin) radioFreqMin.textContent = Math.round(config.min);
+    if (radioFreqMax) radioFreqMax.textContent = Math.round(config.max);
     if (radioUnit) radioUnit.textContent = config.unit;
     updateRadioTuner(savedFreq);
     renderRadioPresets();
@@ -3148,11 +3373,57 @@
   }
 
   function updateRadioRailLabels(config) {
-    var labels = radioNeedle.parentElement.parentElement.querySelectorAll("span");
-    if (labels.length >= 2) {
-      labels[0].textContent = formatRadioFrequency(config.min);
-      labels[1].textContent = formatRadioFrequency(config.max);
+    if (radioFreqMin) radioFreqMin.textContent = Math.round(config.min);
+    if (radioFreqMax) radioFreqMax.textContent = Math.round(config.max);
+    renderRadioRuler(config);
+  }
+
+  function renderRadioRuler(config) {
+    if (!radioRuler) return;
+    var min = config.min;
+    var max = config.max;
+    var step = config.step;
+    var majorInterval = radioBand === "AM" ? 90 : 1.0;
+    var totalMinor = Math.round((max - min) / step);
+    var majorStepCount = Math.round(majorInterval / step);
+    var ticks = [];
+    var labels = [];
+
+    for (var i = 0; i <= totalMinor; i++) {
+      var freq = min + i * step;
+      var percent = (freq - min) / (max - min) * 100;
+      var isMajor = (i % majorStepCount === 0);
+
+      if (isMajor) {
+        var tick = document.createElement("span");
+        tick.className = "tick is-major";
+        tick.style.left = percent + "%";
+        ticks.push(tick);
+
+        var label = document.createElement("span");
+        label.className = "tick-label";
+        label.style.left = percent + "%";
+        label.textContent = radioBand === "AM"
+          ? String(Math.round(freq))
+          : Number(freq).toFixed(1);
+        labels.push(label);
+      } else {
+        var minorTick = document.createElement("span");
+        minorTick.className = "tick";
+        minorTick.style.left = percent + "%";
+        ticks.push(minorTick);
+      }
     }
+
+    radioRuler.innerHTML = "";
+    var fragment = document.createDocumentFragment();
+    for (var j = 0; j < ticks.length; j++) {
+      fragment.appendChild(ticks[j]);
+    }
+    for (var k = 0; k < labels.length; k++) {
+      fragment.appendChild(labels[k]);
+    }
+    radioRuler.appendChild(fragment);
   }
 
   function updateRadioSignal(frequency) {
@@ -3633,828 +3904,41 @@
     return URL.createObjectURL(new Blob([buffer], { type: "audio/wav" }));
   }
 
-  function safeAddFiles(fileList) {
-    var files = Array.prototype.slice.call(fileList || []);
-    if (!files.length) {
-      return;
-    }
-    addFiles(files)["catch"](function (error) {
-      if (!importState.items.length) {
-        startImportProgress(files);
-      }
-      failPendingImportItems(error && error.message ? error.message : "\u5bfc\u5165\u6d41\u7a0b\u5f02\u5e38\u4e2d\u65ad\uff0c\u8bf7\u91cd\u65b0\u9009\u62e9\u6587\u4ef6\u540e\u518d\u8bd5");
-      finishImportProgress();
-    });
-  }
-
-  async function addFiles(fileList) {
-    var files = Array.prototype.slice.call(fileList || []);
-    if (!files.length) {
-      return;
-    }
-
-    var batchId = startImportProgress(files);
-    var audioEntries = [];
-    files.forEach(function (file, index) {
-      var item = importState.items[index];
-      if (isAudioFile(file)) {
-        audioEntries.push({ file: file, item: item });
-      } else {
-        updateImportItem(item, "error", "\u4e0d\u652f\u6301\u7684\u6587\u4ef6\u683c\u5f0f\uff0c\u8bf7\u9009\u62e9 MP3\u3001WAV\u3001FLAC\u3001AAC\u3001M4A\u3001OGG \u7b49\u97f3\u9891\u6587\u4ef6", true);
-      }
-    });
-
-    if (!audioEntries.length) {
-      finishImportProgress();
-      return;
-    }
-
-    var shouldPlay = playlist.length === 0;
-
-    var tracks = [];
-    for (var i = 0; i < audioEntries.length; i += 1) {
-      if (batchId !== importBatchId) {
-        return;
-      }
-      updateImportItem(audioEntries[i].item, "processing", "\u6b63\u5728\u5bfc\u5165\u5e76\u68c0\u6d4b\u97f3\u9891");
-      try {
-        // Yield between large files so the progress panel and drawer remain responsive.
-        await waitForNextFrame();
-        tracks.push(await withTimeout(
-          importAudioFile(audioEntries[i].file),
-          30000,
-          "\u5355\u4e2a\u6587\u4ef6\u5bfc\u5165\u8d85\u65f6\uff0c\u8bf7\u786e\u8ba4\u97f3\u9891\u6587\u4ef6\u672a\u635f\u574f"
-        ));
-        updateImportItem(audioEntries[i].item, "success", "\u5bfc\u5165\u6210\u529f", true);
-      } catch (error) {
-        updateImportItem(audioEntries[i].item, "error", error && error.message ? error.message : "\u5bfc\u5165\u5931\u8d25\uff0c\u6587\u4ef6\u53ef\u80fd\u5df2\u635f\u574f", true);
-      }
-    }
-
-    if (tracks.length) {
-      if (shouldPlay) {
-        revokePlaylistObjectUrls();
-        playlist = [];
-      }
-      tracks.forEach(function (track) {
-        var existingIndex = playlist.findIndex(function (item) {
-          return item.storageKey && item.storageKey === track.storageKey;
-        });
-        if (existingIndex >= 0) {
-          revokeTrackObjectUrl(playlist[existingIndex]);
-          playlist[existingIndex] = track;
-        } else {
-          playlist.push(track);
-        }
-      });
-      savePlaylistMetadata();
-      if (shouldPlay) {
-        loadTrack(0, false);
-      }
-      renderPlaylist();
-      renderFavorites();
-    }
-    finishImportProgress();
-  }
-
-  function isAudioFile(file) {
-    return file && (file.type.indexOf("audio/") === 0 || /\.(mp3|aac|wav|flac|wma|m4a|ogg|opus)$/i.test(file.name));
-  }
-
-  function isLyricFile(file) {
-    return file && /\.lrc$/i.test(file.name);
-  }
-
-  async function importAudioFile(file) {
-    var names = parseTrackName(file.name);
-    var storageKey = createTrackStorageKey(file);
-    var url = URL.createObjectURL(file);
-    try {
-      var metadata = await validateAudioFile(url, file);
-      var folderInfo = getFileFolderInfo(file);
-      var coverUrl = await extractAlbumCover(file);
-      await putLocalMusicBlob(storageKey, file);
-      return {
-        id: createId(),
-        title: names.title,
-        artist: names.artist,
-        durationLabel: Number.isFinite(metadata.duration) ? formatTime(metadata.duration) : "--:--",
-        url: url,
-        storageKey: storageKey,
-        fileName: file.name,
-        fileType: file.type || "audio/*",
-        fileSize: file.size || 0,
-        lastModified: file.lastModified || Date.now(),
-        folderKey: folderInfo.key,
-        folderName: folderInfo.name,
-        coverUrl: coverUrl || "",
-        lyrics: [],
-        lyricsDetected: false,
-        lyricsMessage: ""
-      };
-    } catch (error) {
-      URL.revokeObjectURL(url);
-      throw error;
-    }
-  }
-
-  function validateAudioFile(url, file) {
-    return new Promise(function (resolve, reject) {
-      var probe = new Audio();
-      var finished = false;
-      var type = guessAudioMimeType(file);
-      if (type && probe.canPlayType && probe.canPlayType(type) === "") {
-        reject(new Error("\u5f53\u524d\u8bbe\u5907\u4e0d\u652f\u6301\u8be5\u97f3\u9891\u683c\u5f0f\uff0c\u8bf7\u8f6c\u6362\u4e3a MP3\u3001AAC\u3001WAV\u3001FLAC\u3001WMA \u6216 M4A \u540e\u91cd\u8bd5"));
-        return;
-      }
-      var timer = window.setTimeout(function () {
-        fail("\u97f3\u9891\u6587\u4ef6\u8bfb\u53d6\u8d85\u65f6\uff0c\u6587\u4ef6\u53ef\u80fd\u8fc7\u5927\u6216\u5df2\u635f\u574f");
-      }, 10000);
-
-      function cleanup() {
-        window.clearTimeout(timer);
-        probe.removeAttribute("src");
-        probe.load();
-      }
-
-      function done() {
-        if (finished) {
-          return;
-        }
-        finished = true;
-        var duration = probe.duration;
-        cleanup();
-        resolve({ duration: duration });
-      }
-
-      function fail(message) {
-        if (finished) {
-          return;
-        }
-        finished = true;
-        cleanup();
-        reject(new Error(message || "\u97f3\u9891\u6587\u4ef6\u65e0\u6cd5\u89e3\u6790\uff0c\u8bf7\u786e\u8ba4\u6587\u4ef6\u672a\u635f\u574f\u4e14\u683c\u5f0f\u53d7\u652f\u6301"));
-      }
-
-      probe.preload = "metadata";
-      probe.onloadedmetadata = done;
-      probe.oncanplay = done;
-      probe.oncanplaythrough = done;
-      probe.ondurationchange = function () {
-        if (Number.isFinite(probe.duration) && probe.duration > 0) {
-          done();
-        }
-      };
-      probe.onerror = function () {
-        fail("\u97f3\u9891\u6587\u4ef6\u65e0\u6cd5\u89e3\u6790\uff0c\u8bf7\u786e\u8ba4\u6587\u4ef6\u672a\u635f\u574f\u4e14\u683c\u5f0f\u53d7\u652f\u6301");
-      };
-      probe.src = url;
-      probe.load();
-    });
-  }
-
-  function guessAudioMimeType(file) {
-    if (file && file.type && file.type.indexOf("audio/") === 0) {
-      return file.type;
-    }
-    var match = String(file && file.name || "").match(/\.([a-z0-9]+)$/i);
-    if (!match) {
-      return "";
-    }
-    var extension = match[1].toLowerCase();
-    var typeMap = {
-      mp3: "audio/mpeg",
-      wav: "audio/wav",
-      flac: "audio/flac",
-      aac: "audio/aac",
-        wma: "audio/x-ms-wma",
-      m4a: "audio/mp4",
-      ogg: "audio/ogg",
-      opus: "audio/ogg"
-    };
-    return typeMap[extension] || "";
-  }
-
-  function getFileFolderInfo(file) {
-    var relativePath = String(file && (file.webkitRelativePath || file.relativePath || file.path) || "");
-    var normalized = relativePath.replace(/\\/g, "/");
-    var slashIndex = normalized.lastIndexOf("/");
-    var folderKey = slashIndex > 0 ? normalized.slice(0, slashIndex) : "local-root";
-    return {
-      key: folderKey,
-      name: getFolderNameFromKey(folderKey)
-    };
-  }
-
-  function getFolderKeyFromName(fileName) {
-    var normalized = String(fileName || "").replace(/\\/g, "/");
-    var slashIndex = normalized.lastIndexOf("/");
-    return slashIndex > 0 ? normalized.slice(0, slashIndex) : "local-root";
-  }
-
-  function getFolderNameFromKey(folderKey) {
-    if (!folderKey || folderKey === "local-root") {
-      return "\u672c\u5730\u97f3\u4e50";
-    }
-    var parts = String(folderKey).split("/");
-    return parts[parts.length - 1] || "\u672c\u5730\u97f3\u4e50";
-  }
-
-  function extractAlbumCover(file) {
-    if (!file || !/\.mp3$/i.test(file.name || "")) {
-      return Promise.resolve("");
-    }
-    return readFileAsArrayBuffer(file).then(function (buffer) {
-      var bytes = new Uint8Array(buffer);
-      if (bytes.length < 10 || bytesToAscii(bytes, 0, 3) !== "ID3") {
-        return "";
-      }
-      var tagSize = readSynchsafeInt(bytes, 6);
-      var offset = 10;
-      var end = Math.min(bytes.length, 10 + tagSize);
-      while (offset + 10 <= end) {
-        var frameId = bytesToAscii(bytes, offset, 4);
-        var frameSize = readId3FrameSize(bytes, offset + 4);
-        if (!frameId.trim() || frameSize <= 0 || offset + 10 + frameSize > bytes.length) {
-          break;
-        }
-        if (frameId === "APIC") {
-          return parseApicFrame(bytes.slice(offset + 10, offset + 10 + frameSize));
-        }
-        offset += 10 + frameSize;
-      }
-      return "";
-    })["catch"](function () {
-      return "";
-    });
-  }
-
-  function readSynchsafeInt(bytes, offset) {
-    return ((bytes[offset] & 0x7f) << 21)
-      | ((bytes[offset + 1] & 0x7f) << 14)
-      | ((bytes[offset + 2] & 0x7f) << 7)
-      | (bytes[offset + 3] & 0x7f);
-  }
-
-  function readId3FrameSize(bytes, offset) {
-    return ((bytes[offset] || 0) << 24)
-      | ((bytes[offset + 1] || 0) << 16)
-      | ((bytes[offset + 2] || 0) << 8)
-      | (bytes[offset + 3] || 0);
-  }
-
-  function parseApicFrame(frame) {
-    if (!frame || frame.length < 8) {
-      return "";
-    }
-    var index = 1;
-    while (index < frame.length && frame[index] !== 0) {
-      index += 1;
-    }
-    var mimeType = bytesToAscii(frame, 1, index - 1) || "image/jpeg";
-    index += 2;
-    while (index < frame.length && frame[index] !== 0) {
-      index += 1;
-    }
-    index += 1;
-    if (index >= frame.length) {
-      return "";
-    }
-    var binary = "";
-    var imageBytes = frame.slice(index);
-    for (var i = 0; i < imageBytes.length; i += 1) {
-      binary += String.fromCharCode(imageBytes[i]);
-    }
-    return "data:" + mimeType + ";base64," + window.btoa(binary);
-  }
-
-  function startImportProgress(files) {
-    importBatchId += 1;
-    importState = {
-      total: files.length,
-      done: 0,
-      items: files.map(function (file, index) {
-        return {
-          key: createImportItemKey(file, index),
-          name: file.name || "\u672a\u547d\u540d\u6587\u4ef6",
-          status: "pending",
-          message: "\u7b49\u5f85\u5bfc\u5165",
-          completed: false
-        };
-      })
-    };
-    if (importResult) {
-      importResult.hidden = true;
-    }
-    if (importResultSummary) {
-      importResultSummary.textContent = "";
-    }
-    if (importFailedList) {
-      importFailedList.innerHTML = "";
-    }
-    renderImportProgress("正在导入");
-    return importBatchId;
-  }
-
-  function updateImportItem(item, status, message, completed) {
-    if (!item) {
-      return;
-    }
-    item.status = status;
-    item.message = message || "";
-    if (completed && !item.completed) {
-      item.completed = true;
-      importState.done += 1;
-    }
-    renderImportProgress("正在导入");
-  }
-
-  function failPendingImportItems(message) {
-    importState.items.forEach(function (item) {
-      if (item.status !== "success" && item.status !== "error") {
-        updateImportItem(item, "error", message, true);
-      }
-    });
-  }
-
-  function finishImportProgress() {
-    var success = importState.items.filter(function (item) {
-      return item.status === "success";
-    }).length;
-    var failedItems = importState.items.filter(function (item) {
-      return item.status === "error";
-    });
-    var failed = failedItems.length;
-    importState.done = importState.items.length;
-    renderImportProgress(failed ? "\u5bfc\u5165\u5b8c\u6210\uff0c\u90e8\u5206\u6587\u4ef6\u5931\u8d25" : "\u5bfc\u5165\u5b8c\u6210");
-    if (success || failed) {
-      importProgressTitle.textContent = "\u5bfc\u5165\u5b8c\u6210\uff1a\u6210\u529f" + success + " \u4e2a\uff0c\u5931\u8d25 " + failed + " \u4e2a";
-    }
-    renderImportResult(success, failedItems);
-  }
-
-  function renderImportProgress(title) {
-    if (!importProgressPanel) {
-      return;
-    }
-    var total = importState.total || importState.items.length || 0;
-    var done = Math.min(importState.done, total);
-    var percent = total ? Math.round((done / total) * 100) : 0;
-    importProgressPanel.classList.toggle("is-visible", total > 0);
-    importProgressPanel.setAttribute("aria-hidden", total > 0 ? "false" : "true");
-    importProgressTitle.textContent = title || "正在导入";
-    importProgressCount.textContent = done + "/" + total;
-    importProgressFill.style.width = percent + "%";
-    importStatusList.innerHTML = "";
-    importState.items.forEach(function (item) {
-      var row = document.createElement("li");
-      row.className = "import-status-item is-" + item.status;
-      row.innerHTML = "<strong></strong><span></span>";
-      row.querySelector("strong").textContent = item.name;
-      row.querySelector("span").textContent = item.message;
-      importStatusList.appendChild(row);
-    });
-  }
-
-  function renderImportResult(success, failedItems) {
-    if (!importResult || !importResultSummary || !importFailedList) {
-      return;
-    }
-    importResult.hidden = false;
-    importResultSummary.textContent = failedItems.length
-      ? "\u6279\u91cf\u5bfc\u5165\u5b8c\u6210\uff1a\u6210\u529f" + success + " \u4e2a\uff0c\u5931\u8d25 " + failedItems.length + " \u4e2a"
-      : "\u6279\u91cf\u5bfc\u5165\u5b8c\u6210\uff1a\u6210\u529f" + success + " \u4e2a\uff0c\u5168\u90e8\u6587\u4ef6\u5df2\u52a0\u5165\u64ad\u653e\u5217\u8868";
-    importFailedList.innerHTML = "";
-    failedItems.forEach(function (item) {
-      var row = document.createElement("li");
-      row.innerHTML = "<strong></strong><span></span>";
-      row.querySelector("strong").textContent = item.name;
-      row.querySelector("span").textContent = item.message || "\u5bfc\u5165\u5931\u8d25";
-      importFailedList.appendChild(row);
-    });
-  }
-
-  function markLyricFilesImported(files) {
-    markImportFiles(files, "success", "歌词文件已读取并完成匹配");
-  }
-
-  function markLyricFilesFailed(files, message) {
-    markImportFiles(files, "error", message || "歌词文件读取失败");
-  }
-
-  function markImportFiles(files, status, message) {
-    files.forEach(function (file) {
-      var item = importState.items.find(function (candidate) {
-        return candidate.name === file.name && !candidate.completed;
-      });
-      updateImportItem(item, status, message, true);
-    });
-  }
-
-  function createImportItemKey(file, index) {
-    return [index, file.name || "", file.size || 0, file.lastModified || 0].join("::");
-  }
-
-  function waitForNextFrame() {
-    return new Promise(function (resolve) {
-      window.setTimeout(function () {
-        resolve();
-      }, 0);
-    });
-  }
-
-  function withTimeout(promise, timeoutMs, message) {
-    var timer = 0;
-    var timeoutPromise = new Promise(function (_, reject) {
-      timer = window.setTimeout(function () {
-        reject(new Error(message || "\u64cd\u4f5c\u8d85\u65f6"));
-      }, timeoutMs);
-    });
-    return Promise.race([promise, timeoutPromise]).then(function (result) {
-      window.clearTimeout(timer);
-      return result;
-    }, function (error) {
-      window.clearTimeout(timer);
-      throw error;
-    });
-  }
-
-  function createTrackStorageKey(file) {
-    return [file.name, file.size || 0, file.lastModified || 0].join("::");
-  }
-
   function getBaseName(fileName) {
     return String(fileName || "").replace(/\.[^/.]+$/, "").trim().toLowerCase();
   }
 
-  function getLyricMatchKeys(fileName) {
-    var base = getBaseName(fileName);
-    var normalized = base.replace(/\s+/g, " ").trim();
-    var compact = normalized
-      .replace(/[\[\(（【].*?[\]\)）】]/g, "")
-      .replace(/\s+/g, "")
-      .replace(/[._-]+/g, "")
-      .trim();
-    var keys = [base, normalized];
-    if (compact) {
-      keys.push(compact);
-    }
-    if (normalized.indexOf(" - ") > 0) {
-      var parts = normalized.split(/\s+-\s+/);
-      keys.push(parts.slice(1).join(" - ").trim());
-      keys.push((parts[0] + parts.slice(1).join("")).replace(/\s+/g, ""));
-    }
-    return keys.filter(function (key, index) {
-      return key && keys.indexOf(key) === index;
-    });
-  }
-
-  function findMatchedLyricText(lyricMap, fileName) {
-    var keys = getLyricMatchKeys(fileName);
-    for (var i = 0; i < keys.length; i += 1) {
-      if (lyricMap && lyricMap[keys[i]]) {
-        return lyricMap[keys[i]];
-      }
-    }
-    return "";
-  }
-
-  function createLyricFileMap(files) {
-    return Promise.all(files.map(function (file) {
-      return readLyricFileText(file).then(function (text) {
-        return { keys: getLyricMatchKeys(file.name), text: text };
-      });
-    })).then(function (items) {
-      return items.reduce(function (map, item) {
-        item.keys.forEach(function (key) {
-          map[key] = item.text;
-        });
-        return map;
-      }, {});
-    });
-  }
-
-  function parseTrackName(fileName) {
-    var clean = String(fileName || "").replace(/\.[^/.]+$/, "");
-    var parts = clean.split(/\s+-\s+|\s+--\s+/);
-
-    if (parts.length >= 2) {
-      return { artist: parts[0], title: parts.slice(1).join(" - ") };
-    }
-
-    return { title: clean, artist: "\u672c\u5730\u97f3\u4e50" };
-  }
-
-  function openLocalMusicDb() {
-    if (!window.indexedDB) {
-      return Promise.reject(new Error("IndexedDB unavailable"));
-    }
-    if (!localMusicDbPromise) {
-      localMusicDbPromise = new Promise(function (resolve, reject) {
-        var request = window.indexedDB.open(LOCAL_MUSIC_DB_NAME, 1);
-        request.onupgradeneeded = function () {
-          var db = request.result;
-          if (!db.objectStoreNames.contains(LOCAL_MUSIC_STORE_NAME)) {
-            db.createObjectStore(LOCAL_MUSIC_STORE_NAME);
-          }
-        };
-        request.onsuccess = function () {
-          resolve(request.result);
-        };
-        request.onerror = function () {
-          reject(request.error || new Error("IndexedDB open failed"));
-        };
-      });
-    }
-    return localMusicDbPromise;
-  }
-
-  function withLocalMusicStore(mode, handler) {
-    return openLocalMusicDb().then(function (db) {
-      return new Promise(function (resolve, reject) {
-        var transaction = db.transaction(LOCAL_MUSIC_STORE_NAME, mode);
-        var store = transaction.objectStore(LOCAL_MUSIC_STORE_NAME);
-        var request = handler(store);
-        request.onsuccess = function () {
-          resolve(request.result);
-        };
-        request.onerror = function () {
-          reject(request.error || new Error("IndexedDB request failed"));
-        };
-      });
-    });
-  }
-
-  function putLocalMusicBlob(key, blob) {
-    return withLocalMusicStore("readwrite", function (store) {
-      return store.put(blob, key);
-    })["catch"](function () {
-      return null;
-    });
-  }
-
-  function getLocalMusicBlob(key) {
-    return withLocalMusicStore("readonly", function (store) {
-      return store.get(key);
-    })["catch"](function () {
-      return null;
-    });
-  }
-
-  function deleteLocalMusicBlob(key) {
-    return withLocalMusicStore("readwrite", function (store) {
-      return store.delete(key);
-    })["catch"](function () {
-      return null;
-    });
-  }
-
-  function clearLocalMusicBlobs() {
-    return withLocalMusicStore("readwrite", function (store) {
-      return store.clear();
-    })["catch"](function () {
-      return null;
-    });
-  }
-
-  function savePlaylistMetadata() {
-    try {
-      var metadata = playlist.filter(function (track) {
-        return !track.isDemo && track.source !== "usb" && !track.isTransient;
-      }).map(function (track) {
-        return {
-          id: track.id,
-          title: track.title,
-          artist: track.artist,
-          durationLabel: track.durationLabel,
-          storageKey: track.storageKey,
-          fileName: track.fileName,
-          fileType: track.fileType,
-          fileSize: track.fileSize,
-          lastModified: track.lastModified,
-          folderKey: track.folderKey || "",
-          folderName: track.folderName || "",
-          coverUrl: track.coverUrl || "",
-          lyrics: track.lyrics || [],
-          lyricsDetected: Boolean(track.lyricsDetected),
-          lyricsMessage: track.lyricsMessage || ""
-        };
-      });
-      window.localStorage.setItem(PLAYLIST_STORAGE_KEY, JSON.stringify(metadata));
-      window.localStorage.setItem(CURRENT_INDEX_STORAGE_KEY, String(currentIndex));
-    } catch (error) {
-      // Keep in-memory playback working when storage is unavailable.
-    }
-  }
-
-  function loadPlaylistMetadata() {
-    try {
-      return JSON.parse(window.localStorage.getItem(PLAYLIST_STORAGE_KEY) || "[]");
-    } catch (error) {
-      return [];
-    }
-  }
-
-  function restorePersistedPlaylist() {
-    var metadata = loadPlaylistMetadata();
-    if (!metadata.length) {
-      refreshUsbMusicState(false);
-      return;
-    }
-    Promise.all(metadata.map(function (item) {
-      return getLocalMusicBlob(item.storageKey).then(function (blob) {
-        return {
-          id: item.id || createId(),
-          title: item.title || parseTrackName(item.fileName || "").title,
-          artist: item.artist || "本地音乐",
-          durationLabel: item.durationLabel || "--:--",
-          storageKey: item.storageKey,
-          fileName: item.fileName || "",
-          fileType: item.fileType || "audio/*",
-          fileSize: item.fileSize || 0,
-          lastModified: item.lastModified || 0,
-          folderKey: item.folderKey || getFolderKeyFromName(item.fileName || ""),
-          folderName: item.folderName || getFolderNameFromKey(item.folderKey || getFolderKeyFromName(item.fileName || "")),
-          coverUrl: item.coverUrl || "",
-          url: blob ? URL.createObjectURL(blob) : "",
-          missingBlob: !blob,
-          lyrics: Array.isArray(item.lyrics) && item.lyrics.length ? item.lyrics : [],
-          lyricsDetected: Boolean(item.lyricsDetected),
-          lyricsMessage: item.lyricsMessage || ""
-        };
-      });
-    })).then(function (tracks) {
-      revokePlaylistObjectUrls();
-      playlist = tracks;
-      currentIndex = clampIndex(Number(window.localStorage.getItem(CURRENT_INDEX_STORAGE_KEY)) || 0);
-      loadTrack(currentIndex, false);
-      renderPlaylist();
-      renderFavorites();
-      refreshUsbMusicState(false);
-      maybeResumeLocalPlayback("restore");
-    })["catch"](function () {
-      renderPlaylist();
-      renderFavorites();
-      refreshUsbMusicState(false);
-    });
-  }
-
-  function loadLocalPlaybackMode() {
-    try {
-      var saved = JSON.parse(window.localStorage.getItem(LOCAL_PLAYBACK_MODE_STORAGE_KEY) || "{}");
-      if (LOCAL_PLAYBACK_MODES.indexOf(saved.playbackMode) >= 0) {
-        localPlaybackMode = saved.playbackMode;
-      } else {
-        localPlaybackMode = resolvePlaybackMode(saved.loopMode, saved.randomMode);
-      }
-      if (LOCAL_LOOP_MODES.indexOf(saved.loopMode) >= 0) {
-        localLoopMode = saved.loopMode;
-      }
-      if (LOCAL_RANDOM_MODES.indexOf(saved.randomMode) >= 0) {
-        localRandomMode = saved.randomMode;
-      }
-      pendingLocalResumeState = JSON.parse(window.localStorage.getItem(LOCAL_PLAYBACK_RESUME_STORAGE_KEY) || "null");
-    } catch (error) {
-      pendingLocalResumeState = null;
-    }
-    syncLegacyPlayModeFlags();
-  }
-
-  function saveLocalPlaybackMode() {
-    try {
-      window.localStorage.setItem(LOCAL_PLAYBACK_MODE_STORAGE_KEY, JSON.stringify({
-        playbackMode: localPlaybackMode,
-        loopMode: localLoopMode,
-        randomMode: localRandomMode
-      }));
-    } catch (error) {
-      // Playback mode changes should still work when storage is unavailable.
-    }
-  }
-
-  function rememberLocalResumePoint() {
-    if (!playlist.length || activeAudioSource === "usb") {
-      return;
-    }
-    var current = playlist[currentIndex];
-    if (!current || current.source === "usb") {
-      return;
-    }
-    saveLocalPlaybackMode();
-    try {
-      window.localStorage.setItem(LOCAL_PLAYBACK_RESUME_STORAGE_KEY, JSON.stringify({
-        index: currentIndex,
-        id: current.id || "",
-        storageKey: current.storageKey || "",
-        title: current.title || "",
-        artist: current.artist || "",
-        currentTime: Number(audio.currentTime) || 0,
-        duration: Number(audio.duration) || 0,
-        wasPlaying: !audio.paused,
-        playbackMode: localPlaybackMode,
-        loopMode: localLoopMode,
-        randomMode: localRandomMode,
-        activeModule: activeModule,
-        updatedAt: Date.now()
-      }));
-      window.localStorage.setItem(CURRENT_INDEX_STORAGE_KEY, String(currentIndex));
-    } catch (error) {
-      // Resume persistence is best-effort.
-    }
-  }
-
-  function scheduleLocalResumeSave() {
-    if (localResumeSaveTimer) {
-      return;
-    }
-    localResumeSaveTimer = window.setTimeout(function () {
-      localResumeSaveTimer = 0;
-      rememberLocalResumePoint();
-    }, 1000);
-  }
-
-  function maybeResumeLocalPlayback(reason) {
-    if (!playlist.length || localResumeApplied) {
-      return;
-    }
-    var resume = pendingLocalResumeState;
-    if (!resume || resume.activeModule && resume.activeModule !== "local") {
-      return;
-    }
-    var resumeIndex = findLocalResumeIndex(resume);
-    if (resumeIndex < 0) {
-      return;
-    }
-    localPlaybackMode = LOCAL_PLAYBACK_MODES.indexOf(resume.playbackMode) >= 0
-      ? resume.playbackMode
-      : resolvePlaybackMode(resume.loopMode, resume.randomMode);
-    updatePlayModeButton();
-    localResumeApplied = true;
-    if (resumeIndex !== currentIndex) {
-      loadTrack(resumeIndex, false);
-    }
-    var targetTime = Math.max(0, Number(resume.currentTime) || 0);
-    var applyTime = function () {
-      if (Number.isFinite(audio.duration) && audio.duration > 0) {
-        audio.currentTime = Math.min(targetTime, Math.max(0, audio.duration - 1));
-      } else {
-        audio.currentTime = targetTime;
-      }
-      updateProgress();
-      if (resume.wasPlaying) {
-        isolateAudioForModule("local");
-        callNativeBluetooth("setActiveAudioModule", "local");
-        audio.play()["catch"](function () {
-          updatePlayState();
-        });
-      }
-    };
-    if (audio.readyState >= 1) {
-      applyTime();
-    } else {
-      audio.addEventListener("loadedmetadata", applyTime, { once: true });
-    }
-  }
-
-  function maybeResumeBluetoothOnReturn(reason) {
-    if (!btResumeState || !btResumeState.shouldResume) {
-      return;
-    }
-    if (activeModule !== "bluetooth") {
-      return;
-    }
-    if (btResumeState.wasPlaying) {
-      toggleBluetoothPlaybackSynced();
-    }
-  }
-
-  function findLocalResumeIndex(resume) {
-    if (!resume) {
-      return -1;
-    }
-    var index = playlist.findIndex(function (track) {
-      return resume.storageKey && track.storageKey === resume.storageKey;
-    });
-    if (index >= 0) {
-      return index;
-    }
-    index = playlist.findIndex(function (track) {
-      return resume.id && track.id === resume.id;
-    });
-    return index >= 0 ? index : clampIndex(Number(resume.index) || 0);
-  }
-
   function handleNativeAppPause() {
-    rememberLocalResumePoint();
     rememberBluetoothResumePoint({ shouldResume: activeModule === "bluetooth" && isBtPlaying, wasPlaying: isBtPlaying });
     rememberUsbResumePoint();
   }
 
   function handleNativeAppResume() {
-    maybeResumeLocalPlayback("native-resume");
     syncBluetoothConnectionStateOnResume();
     if (isRadioPlaying) {
       resumeRadioAudio();
+    }
+    window.setTimeout(function () {
+      refreshUsbMusicState(false);
+    }, 200);
+  }
+
+  function handleNativePhoneCallStart() {
+    if (activeAudioSource === "usb" && !audio.paused) {
+      usbPausedByPhoneCall = true;
+      audio.pause();
+      updateUsbPlaybackUi();
+    }
+  }
+
+  function handleNativePhoneCallEnd() {
+    if (usbPausedByPhoneCall) {
+      usbPausedByPhoneCall = false;
+      if (activeAudioSource === "usb" && audio.paused) {
+        audio.play()["catch"](function () {
+          updateUsbPlaybackUi();
+        });
+      }
     }
   }
 
@@ -4466,235 +3950,6 @@
 
   function revokePlaylistObjectUrls() {
     playlist.forEach(revokeTrackObjectUrl);
-  }
-
-  function readFileAsText(file) {
-    return new Promise(function (resolve, reject) {
-      var reader = new FileReader();
-      reader.onload = function () {
-        resolve(String(reader.result || ""));
-      };
-      reader.onerror = function () {
-        reject(reader.error || new Error("read text failed"));
-      };
-      reader.readAsText(file, "utf-8");
-    });
-  }
-
-  function readLyricFileText(file) {
-    return readFileAsArrayBuffer(file).then(function (buffer) {
-      var bytes = new Uint8Array(buffer || []);
-      if (bytes.length >= 2 && bytes[0] === 0xff && bytes[1] === 0xfe) {
-        return decodeTextBytes(bytes.slice(2), "utf-16le");
-      }
-      if (bytes.length >= 2 && bytes[0] === 0xfe && bytes[1] === 0xff) {
-        return decodeTextBytes(bytes.slice(2), "utf-16be");
-      }
-      if (bytes.length >= 3 && bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf) {
-        return decodeTextBytes(bytes.slice(3), "utf-8");
-      }
-
-      var candidates = ["utf-8", "gb18030", "gbk"];
-      var best = "";
-      var bestScore = -1;
-      candidates.forEach(function (encoding) {
-        var decoded = decodeTextBytes(bytes, encoding);
-        var score = scoreDecodedLyricText(decoded);
-        if (score > bestScore) {
-          best = decoded;
-          bestScore = score;
-        }
-      });
-      return best;
-    })["catch"](function () {
-      return readFileAsText(file);
-    });
-  }
-
-  function decodeTextBytes(bytes, encoding) {
-    try {
-      return new TextDecoder(encoding, { fatal: false }).decode(bytes);
-    } catch (error) {
-      return "";
-    }
-  }
-
-  function scoreDecodedLyricText(text) {
-    if (!text) {
-      return -1000;
-    }
-    var replacementCount = (text.match(/\ufffd/g) || []).length;
-    var timestampCount = (text.match(/\[\d{1,2}:\d{2}(?:[.:]\d{1,3})?\]/g) || []).length;
-    var readableCount = (text.match(/[\u4e00-\u9fa5A-Za-z0-9]/g) || []).length;
-    return timestampCount * 20 + readableCount - replacementCount * 50;
-  }
-
-  function readFileAsArrayBuffer(file) {
-    return new Promise(function (resolve, reject) {
-      var reader = new FileReader();
-      reader.onload = function () {
-        resolve(reader.result);
-      };
-      reader.onerror = function () {
-        reject(reader.error || new Error("read buffer failed"));
-      };
-      reader.readAsArrayBuffer(file);
-    });
-  }
-
-  function detectLyricsForAudio(file, matchedLyricsText) {
-    var parsed = parseDetectedLyricsText(matchedLyricsText);
-    if (parsed.length) {
-      return Promise.resolve(parsed);
-    }
-    if (!/\.mp3$/i.test(file.name)) {
-      return Promise.resolve([]);
-    }
-    return readFileAsArrayBuffer(file).then(extractMp3Lyrics).then(parseDetectedLyricsText)["catch"](function () {
-      return [];
-    });
-  }
-
-  function applyLyricMapToPlaylist(lyricMap) {
-    var updated = false;
-    Object.keys(lyricMap || {}).forEach(function (baseName) {
-      var lyrics = parseDetectedLyricsText(lyricMap[baseName]);
-      if (!lyrics.length) {
-        return;
-      }
-      playlist.forEach(function (track) {
-        if (getLyricMatchKeys(track.fileName || track.title).indexOf(baseName) >= 0) {
-          track.lyrics = lyrics;
-          track.lyricsDetected = true;
-          track.lyricsMessage = "\u5df2\u8bc6\u522b\u5e76\u540c\u6b65\u6b4c\u8bcd";
-          updated = true;
-        }
-      });
-    });
-    if (updated) {
-      savePlaylistMetadata();
-    }
-    renderPlaylist();
-    renderFavorites();
-  }
-
-  function parseDetectedLyricsText(text) {
-    var synced = parseLrc(text);
-    if (synced.length) {
-      return synced;
-    }
-    return createPlainLyrics(text);
-  }
-
-  function parseLrc(text) {
-    if (!text) {
-      return [];
-    }
-    var lines = String(text).split(/\r?\n/);
-    var lyrics = [];
-    var offsetSeconds = 0;
-    lines.forEach(function (line) {
-      var offsetMatch = line.match(/^\[offset:([+-]?\d+)\]/i);
-      if (offsetMatch) {
-        offsetSeconds = Number(offsetMatch[1]) / 1000;
-        return;
-      }
-      var matches = line.match(/\[(\d{1,2}):(\d{2})(?:[.:](\d{1,3}))?\]/g);
-      var content = line.replace(/\[[^\]]+\]/g, "").trim();
-      if (!matches || !content) {
-        return;
-      }
-      matches.forEach(function (stamp) {
-        var parts = stamp.match(/\[(\d{1,2}):(\d{2})(?:[.:](\d{1,3}))?\]/);
-        if (!parts) {
-          return;
-        }
-        var fraction = parts[3] ? Number("0." + parts[3].padEnd(3, "0").slice(0, 3)) : 0;
-        lyrics.push({
-          time: Math.max(0, Number(parts[1]) * 60 + Number(parts[2]) + fraction + offsetSeconds),
-          text: content
-        });
-      });
-    });
-    return lyrics.sort(function (left, right) {
-      return left.time - right.time;
-    });
-  }
-
-  function createPlainLyrics(text) {
-    if (!text) {
-      return [];
-    }
-    return String(text).split(/\r?\n/).map(function (line) {
-      return line.replace(/\[[^\]]+\]/g, "").trim();
-    }).filter(Boolean).map(function (line, index) {
-      return {
-        time: index * 4,
-        text: line
-      };
-    });
-  }
-
-  function extractMp3Lyrics(buffer) {
-    var bytes = new Uint8Array(buffer || []);
-    if (bytes.length < 20 || bytes[0] !== 0x49 || bytes[1] !== 0x44 || bytes[2] !== 0x33) {
-      return "";
-    }
-    var version = bytes[3];
-    var tagSize = syncSafeToInt(bytes[6], bytes[7], bytes[8], bytes[9]);
-    var offset = 10;
-    var end = Math.min(bytes.length, offset + tagSize);
-    while (offset + 10 <= end) {
-      var frameId = bytesToAscii(bytes, offset, 4);
-      var frameSize = version === 4
-        ? syncSafeToInt(bytes[offset + 4], bytes[offset + 5], bytes[offset + 6], bytes[offset + 7])
-        : ((bytes[offset + 4] << 24) | (bytes[offset + 5] << 16) | (bytes[offset + 6] << 8) | bytes[offset + 7]);
-      offset += 10;
-      if (!frameId.trim() || frameSize <= 0 || offset + frameSize > end) {
-        break;
-      }
-      if (frameId === "USLT" || frameId === "SYLT") {
-        return decodeId3Text(bytes.slice(offset, offset + frameSize));
-      }
-      offset += frameSize;
-    }
-    return "";
-  }
-
-  function syncSafeToInt(a, b, c, d) {
-    return (a << 21) | (b << 14) | (c << 7) | d;
-  }
-
-  function bytesToAscii(bytes, start, length) {
-    var text = "";
-    for (var i = 0; i < length; i += 1) {
-      text += String.fromCharCode(bytes[start + i] || 0);
-    }
-    return text;
-  }
-
-  function decodeId3Text(bytes) {
-    if (!bytes || !bytes.length) {
-      return "";
-    }
-    var encoding = bytes[0];
-    var start = 1;
-    if (bytes.length > 4 && /^[a-z]{3}$/i.test(bytesToAscii(bytes, 1, 3))) {
-      start = 4;
-      while (start < bytes.length && bytes[start] !== 0) {
-        start += 1;
-      }
-      start += 1;
-    }
-    var payload = bytes.slice(start);
-    try {
-      if (encoding === 1 || encoding === 2) {
-        return new TextDecoder("utf-16").decode(payload);
-      }
-      return new TextDecoder("utf-8").decode(payload);
-    } catch (error) {
-      return bytesToAscii(payload, 0, payload.length);
-    }
   }
 
   function loadTrack(index, autoplay) {
@@ -4711,52 +3966,14 @@
       });
       if (usbIndex < 0) {
         removeUsbTracksFromMainPlaylist();
-        showUsbToast("USB\u8bbe\u5907\u5df2\u79fb\u9664\uff0c\u6b4c\u66f2\u5df2\u4ece\u5217\u8868\u6e05\u7406");
+        showUsbToast("USB设备已移除，歌曲已从列表清理");
         return;
       }
       loadUsbTrack(usbIndex, autoplay, 0);
       return;
     }
 
-    activeAudioSource = "local";
-    if (track.missingBlob || !track.url) {
-      audio.removeAttribute("src");
-      audio.load();
-      trackTitle.textContent = track.title;
-      trackArtist.textContent = track.artist + " - " + "\u97f3\u9891\u6587\u4ef6\u9700\u91cd\u65b0\u5bfc\u5165";
-      updateAlbumArtwork(track);
-      durationEl.textContent = track.durationLabel || "--:--";
-      progress.value = 0;
-      progress.max = 100;
-      updateRangeFill(progress);
-      updateFavoriteState();
-      renderPlaylist();
-      renderFavorites();
-      updatePlayState();
-      savePlaylistMetadata();
-      return;
-    }
-    audio.src = track.url;
-    audio.loop = localLoopMode === "single";
-    trackTitle.textContent = track.title;
-    trackArtist.textContent = track.artist;
-    updateAlbumArtwork(track);
-    currentTimeEl.textContent = "0:00";
-    durationEl.textContent = track.durationLabel || "0:00";
-    progress.value = 0;
-    progress.max = 100;
-    updateRangeFill(progress);
-    updateFavoriteState();
-    renderPlaylist();
-    renderFavorites();
-    savePlaylistMetadata();
-
-    if (autoplay) {
-      audio.play()["catch"](function () {
-        updatePlayState();
-      });
-    }
-    notifyNativePlaybackState();
+    resetPlayer();
   }
 
   function togglePlay() {
@@ -4769,7 +3986,7 @@
       if (activeAudioSource !== "usb") {
         loadTrack(currentIndex, true);
       } else if (audio.paused) {
-        applyMediaVolume(Number(usbVolume.value));
+        applyMediaVolume(audio.volume);
         audio.play()["catch"](function () {
           updateUsbPlaybackUi();
         });
@@ -4778,25 +3995,10 @@
       }
       return;
     }
-
-    if (activeAudioSource !== "local") {
-      loadTrack(currentIndex, true);
-      return;
-    }
-    if (audio.paused) {
-      isolateAudioForModule("local");
-      callNativeBluetooth("setActiveAudioModule", "local");
-      applyMediaVolume(Number(volume.value));
-      audio.play()["catch"](function () {
-        updatePlayState();
-      });
-    } else {
-      audio.pause();
-    }
   }
 
   function stopPlayback() {
-    if (activeAudioSource !== "local") {
+    if (activeAudioSource !== "usb") {
       return;
     }
     audio.pause();
@@ -4813,17 +4015,6 @@
       playPreviousUsbTrack();
       return;
     }
-
-    if (activeAudioSource !== "local") {
-      loadTrack(currentIndex, true);
-      return;
-    }
-    if (audio.currentTime > 3) {
-      audio.currentTime = 0;
-      return;
-    }
-
-    loadTrack(getPreviousLocalIndex(), true);
   }
 
   function playNext() {
@@ -4835,152 +4026,39 @@
       playNextUsbTrack();
       return;
     }
-
-    if (activeAudioSource !== "local") {
-      loadTrack(currentIndex, true);
-      return;
-    }
-    loadTrack(getNextLocalIndex(), true);
   }
 
   function handleEnded() {
     if (activeAudioSource === "usb") {
-      progress.value = 0;
-      currentTimeEl.textContent = "0:00";
-      updateRangeFill(progress);
-      playNextUsbTrack();
+      usbProgress.value = 0;
+      usbCurrentTime.textContent = "0:00";
+      updateRangeFill(usbProgress);
+      loadUsbTrack(getAutoAdvanceUsbIndex(), true, 0);
       rememberUsbResumePoint();
       return;
     }
-
-    progress.value = 0;
-    currentTimeEl.textContent = "0:00";
-    updateRangeFill(progress);
-
-    rememberLocalResumePoint();
-    if (localPlaybackMode === "list" && isAtEndOfLocalList()) {
-      audio.pause();
-      updatePlayState();
-      return;
-    }
-    loadTrack(getNextLocalIndex(), true);
-    notifyNativePlaybackState();
-  }
-
-  function cycleLoopMode() {
-    cyclePlaybackMode();
-  }
-
-  function cycleRandomMode() {
-    cyclePlaybackMode();
-  }
-
-  function cyclePlaybackMode() {
-    var next = (LOCAL_PLAYBACK_MODES.indexOf(localPlaybackMode) + 1) % LOCAL_PLAYBACK_MODES.length;
-    localPlaybackMode = LOCAL_PLAYBACK_MODES[next];
-    syncLegacyPlayModeFlags();
-    saveLocalPlaybackMode();
-    updatePlayModeButton();
-    showPlaybackModeToast(getPlaybackModeLabel(localPlaybackMode));
-    rememberLocalResumePoint();
-  }
-
-  function syncLegacyPlayModeFlags() {
-    if (localPlaybackMode === "single") {
-      localLoopMode = "single";
-      localRandomMode = "none";
-    } else if (localPlaybackMode === "random") {
-      localLoopMode = "all";
-      localRandomMode = "all";
-    } else {
-      localLoopMode = "all";
-      localRandomMode = "none";
-    }
-    isRepeat = localLoopMode === "single";
-    isShuffle = localRandomMode !== "none";
-    audio.loop = localLoopMode === "single";
-  }
-
-  function resolvePlaybackMode(loopMode, randomMode) {
-    if (randomMode && randomMode !== "none") {
-      return "random";
-    }
-    if (loopMode === "single") {
-      return "single";
-    }
-    if (loopMode === "list") {
-      return "list";
-    }
-    return "loop";
-  }
-
-  function getPlaybackModeLabel(mode) {
-    var labels = {
-      loop: "\u5faa\u73af\u64ad\u653e",
-      single: "\u5355\u66f2\u5faa\u73af",
-      random: "\u968f\u673a\u64ad\u653e",
-      list: "\u5217\u8868\u64ad\u653e"
-    };
-    return labels[mode] || labels.loop;
-  }
-
-  function updatePlayModeButton() {
-    syncLegacyPlayModeFlags();
-    var icons = {
-      random: '<span class="play-mode-glyph" aria-hidden="true"><svg class="play-mode-svg" viewBox="0 0 36 36" focusable="false" fill="none"><path d="M18.2676 18.418C18.2823 18.4326 28.9064 29.0347 31.3713 31.4944" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><path d="M3.87775 4.05811C3.8935 4.07383 14.0439 14.2032 14.0481 14.2074" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><path d="M31.6153 4.32031C22.3691 13.5473 13.1239 22.7732 3.87775 32.0002" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><path d="M24.1376 4H31.8389C31.8609 4 31.8777 4.01677 31.8777 4.03878V11.7241" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><path d="M24.1376 32H31.5711C31.7402 32 31.8777 31.8627 31.8777 31.738V24.3188" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg></span>',
-      loop: '<span class="play-mode-glyph" aria-hidden="true"><svg class="play-mode-svg" viewBox="0 0 36 36" focusable="false" fill="none"><path d="M25.7723 2.11621C26.2604 1.62806 27.0517 1.62806 27.5399 2.11621L32.7254 7.30078C33.2017 7.77727 33.2524 8.59314 32.7234 9.11914L32.7254 9.12109L27.5399 14.3066C27.0518 14.7948 26.2605 14.7946 25.7723 14.3066C25.2842 13.8185 25.2842 13.0272 25.7723 12.5391L28.7654 9.54492H16.3524C10.0271 9.54513 4.12798 14.6906 4.12775 20.7686V20.7695C4.12782 26.8476 10.027 31.9939 16.3524 31.9941H26.5135C29.0716 31.9941 31.3968 31.0057 33.1317 29.3887C33.6366 28.9181 34.4276 28.9454 34.8983 29.4502C35.3688 29.9552 35.3407 30.7471 34.8358 31.2178C32.6568 33.2485 29.7291 34.4941 26.5135 34.4941H16.3524C8.90003 34.4939 1.62781 28.4691 1.62775 20.7695V20.7686C1.62798 13.0691 8.90012 7.04513 16.3524 7.04492H28.9324L25.7723 3.88379C25.2841 3.39563 25.2841 2.60437 25.7723 2.11621Z" fill="currentColor"/></svg></span>',
-      single: '<span class="play-mode-glyph" aria-hidden="true"><svg class="play-mode-svg" viewBox="0 0 36 36" focusable="false" fill="none"><path d="M25.7723 2.11621C26.2604 1.62806 27.0517 1.62806 27.5399 2.11621L32.7254 7.30078C33.2017 7.77727 33.2524 8.59314 32.7234 9.11914L32.7254 9.12109L27.5399 14.3066C27.0518 14.7948 26.2605 14.7946 25.7723 14.3066C25.2842 13.8185 25.2842 13.0272 25.7723 12.5391L28.7654 9.54492H16.3524C10.0271 9.54513 4.12798 14.6906 4.12775 20.7686V20.7695C4.12782 26.8476 10.027 31.9939 16.3524 31.9941H26.5135C29.0716 31.9941 31.3968 31.0057 33.1317 29.3887C33.6366 28.9181 34.4276 28.9454 34.8983 29.4502C35.3688 29.9552 35.3407 30.7471 34.8358 31.2178C32.6568 33.2485 29.7291 34.4941 26.5135 34.4941H16.3524C8.90003 34.4939 1.62781 28.4691 1.62775 20.7695V20.7686C1.62798 13.0691 8.90012 7.04513 16.3524 7.04492H28.9324L25.7723 3.88379C25.2841 3.39563 25.2841 2.60437 25.7723 2.11621Z" fill="currentColor"/><path d="M18.6834 27V18.167H15.6072V16.3652C16.3924 16.4062 17.0955 16.2334 17.7166 15.8467C18.3436 15.46 18.8182 14.9062 19.1404 14.1855H21.2059V27H19.949H18.6834Z" fill="currentColor"/></svg></span>'
-    };
-    repeatBtn.innerHTML = icons[localPlaybackMode] || icons.random;
-    repeatBtn.title = getPlaybackModeLabel(localPlaybackMode);
-    repeatBtn.setAttribute("aria-label", repeatBtn.title);
-    repeatBtn.setAttribute("aria-pressed", "true");
-    repeatBtn.setAttribute("data-mode", localPlaybackMode);
-  }
-
-  function updateRandomModeButton() {
-    if (!shuffleBtn) {
-      return;
-    }
-    shuffleBtn.className = "visually-hidden";
-    shuffleBtn.setAttribute("tabindex", "-1");
-    shuffleBtn.setAttribute("aria-hidden", "true");
-  }
-
-  function showPlaybackModeToast(label) {
-    if (!usbToast) {
-      return;
-    }
-    window.clearTimeout(usbToastTimer);
-    usbToast.textContent = "\u5df2\u5207\u6362\u81f3" + label;
-    usbToast.classList.add("is-visible");
-    usbToastTimer = window.setTimeout(function () {
-      usbToast.classList.remove("is-visible");
-    }, 1500);
   }
 
   function handleAudioError() {
     if (activeAudioSource === "usb") {
-      usbTrackMeta.textContent = "当前USB音频不可播放";
+      usbTrackMeta.textContent = "当前USB音频不可播放，已自动跳过";
       updateUsbPlaybackUi();
+      if (usbPlaylist.length > 1) {
+        window.setTimeout(function () {
+          loadUsbTrack(getAutoAdvanceUsbIndex(), true, 0);
+        }, 800);
+      }
       return;
-    }
-    var current = playlist[currentIndex];
-    if (current) {
-      current.durationLabel = "不可播放";
-      renderPlaylist();
     }
   }
 
   function clearPlaylist() {
     revokePlaylistObjectUrls();
-    clearLocalMusicBlobs();
     playlist = [];
     favoriteIds = [];
     favoriteKeys = [];
     currentIndex = 0;
     saveFavoriteKeys();
-    savePlaylistMetadata();
     resetPlayer();
     renderPlaylist();
     renderFavorites();
@@ -5008,9 +4086,6 @@
     if (removed.url && removed.url.indexOf("blob:") === 0) {
       URL.revokeObjectURL(removed.url);
     }
-    if (removed.storageKey) {
-      deleteLocalMusicBlob(removed.storageKey);
-    }
 
     if (!playlist.length) {
       resetPlayer();
@@ -5023,7 +4098,6 @@
     renderPlaylist();
     renderFavorites();
     updateFavoriteState();
-    savePlaylistMetadata();
   }
 
   function moveTrack(id, direction) {
@@ -5048,7 +4122,6 @@
 
     renderPlaylist();
     renderFavorites();
-    savePlaylistMetadata();
   }
 
   function renderPlaylist() {
@@ -5057,65 +4130,132 @@
       return;
     }
 
-    var keyword = searchInput.value.trim().toLowerCase();
-    var filtered = playlist.filter(function (track) {
-      return (track.title + " " + track.artist).toLowerCase().indexOf(keyword) >= 0;
-    });
-
     trackCount.textContent = "(" + playlist.length + ")";
     playlistEl.innerHTML = "";
 
-    if (!filtered.length) {
+    if (!playlist.length) {
       var empty = document.createElement("li");
       empty.className = "empty-state";
-      empty.textContent = playlist.length ? "\u6ca1\u6709\u5339\u914d\u7684\u97f3\u4e50" : "\u6682\u65e0\u97f3\u4e50\uff0c\u5bfc\u5165\u672c\u5730\u97f3\u9891\u6216\u62d6\u62fd\u6587\u4ef6\u5230\u5c01\u9762\u533a";
+      empty.textContent = "暂无音乐";
       playlistEl.appendChild(empty);
+      updatePlaylistBatchBar();
       return;
     }
 
-    filtered.forEach(function (track) {
-      var originalIndex = playlist.indexOf(track);
-      var item = document.createElement("li");
-      item.className = "track-item" + (originalIndex === currentIndex ? " is-active" : "");
-      item.tabIndex = 0;
-      item.innerHTML =
-        '<span class="track-index">' +
-        String(originalIndex + 1).padStart(2, "0") +
-        '</span><span class="track-name"><strong></strong><span></span></span>' +
-        '<span class="track-actions">' +
-        '<button class="mini-button up" title="\u4e0a\u79fb">&#8593;</button>' +
-        '<button class="mini-button down" title="\u4e0b\u79fb">&#8595;</button>' +
-        '<button class="mini-button remove" title="\u79fb\u9664">\u5220\u9664</button>' +
-        "</span>";
+    var batchMode = playlistIsEditing;
+    var selectedMap = playlistBatchSelected;
 
-      item.querySelector("strong").textContent = track.title;
-      item.querySelector(".track-name span").textContent = track.artist + " - " + (track.durationLabel || "--:--");
+    playlist.forEach(function (track) {
+      var originalIndex = playlist.indexOf(track);
+      var isPlaying = (originalIndex === currentIndex && !audio.paused && !audio.ended);
+      var isSelected = !!selectedMap[track.id];
+      var item = document.createElement("li");
+      item.className = "track-item" +
+        (batchMode ? " is-batch-mode" : "") +
+        (isSelected ? " is-selected" : "") +
+        (isPlaying ? " is-playing" : "") +
+        (originalIndex === currentIndex ? " is-active" : "");
+      item.tabIndex = 0;
+
+      var checkboxHtml = '<button class="track-select-checkbox' + (batchMode ? " is-visible" : "") + (isSelected ? " is-checked" : "") + '" type="button" aria-label="选择"></button>';
+      var playingIcon = isPlaying
+        ? '<img class="track-playing-icon" src="./assets/playlist-icons/playing.svg" alt="播放中" />'
+        : '';
+      var trackNum = isPlaying
+        ? ''
+        : '<span class="track-index">' + String(originalIndex + 1).padStart(2, "0") + '</span>';
+      var coverHtml = '<span class="track-cover"></span>';
+      var playBtn = isPlaying
+        ? ''
+        : '<button class="track-action-btn track-play-btn" title="播放" aria-label="播放"><svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="M8 5v14l11-7z"/></svg></button>';
+      var isFav = isTrackFavorite(track);
+      var favBtnHtml = isFav
+        ? '<button class="track-action-btn track-fav-btn is-active" title="取消收藏" aria-label="取消收藏"><svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg></button>'
+        : '<button class="track-action-btn track-fav-btn" title="添加收藏" aria-label="添加收藏"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg></button>';
+      var deleteBtnHtml = '<button class="track-action-btn track-delete-btn" title="删除" aria-label="删除"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>';
+
+      item.innerHTML =
+        checkboxHtml +
+        playingIcon +
+        trackNum +
+        coverHtml +
+        '<span class="track-info">' +
+        '<span class="track-name"></span>' +
+        '<span class="track-meta"></span>' +
+        '</span>' +
+        '<span class="track-actions">' +
+        playBtn +
+        favBtnHtml +
+        deleteBtnHtml +
+        '</span>';
+
+      item.querySelector(".track-name").textContent = track.title;
+      item.querySelector(".track-meta").textContent = track.artist + " - " + (track.durationLabel || "--:--");
+
+      if (track.coverUrl) {
+        var img = document.createElement("img");
+        img.src = track.coverUrl;
+        img.alt = "";
+        img.onerror = function () { this.style.display = "none"; };
+        item.querySelector(".track-cover").appendChild(img);
+      }
 
       item.addEventListener("click", function (event) {
-        if (event.target.closest(".mini-button")) {
+        if (event.target.closest(".track-select-checkbox")) {
+          togglePlaylistBatchSelect(track.id);
           return;
         }
-        loadTrack(originalIndex, true);
-      });
-
-      item.addEventListener("keydown", function (event) {
-        if (event.key === "Enter") {
+        if (event.target.closest(".track-delete-btn")) {
+          confirmDeleteTrack(track.id, "playlist");
+          return;
+        }
+        if (event.target.closest(".track-fav-btn")) {
+          if (activeModule === "usb") {
+            toggleUsbFavoriteById(track.id);
+          } else {
+            if (isTrackFavorite(track)) {
+              removeFavorite(track);
+            } else {
+              addFavorite(track);
+            }
+            renderFavorites();
+            if (activeModule === "usb") {
+              renderUsbPlaylist();
+            } else {
+              renderPlaylist();
+            }
+          }
+          return;
+        }
+        if (event.target.closest(".track-play-btn")) {
+          if (activeModule === "usb") {
+            var usbIdx = usbPlaylist.findIndex(function (t) { return t.id === track.id; });
+            if (usbIdx >= 0) playUsbTrackAt(usbIdx);
+          } else {
+            loadTrack(originalIndex, true);
+          }
+          return;
+        }
+        if (batchMode) {
+          togglePlaylistBatchSelect(track.id);
+        } else {
           loadTrack(originalIndex, true);
         }
       });
 
-      item.querySelector(".up").addEventListener("click", function () {
-        moveTrack(track.id, -1);
-      });
-      item.querySelector(".down").addEventListener("click", function () {
-        moveTrack(track.id, 1);
-      });
-      item.querySelector(".remove").addEventListener("click", function () {
-        removeTrack(track.id);
+      item.addEventListener("keydown", function (event) {
+        if (event.key === "Enter") {
+          if (batchMode) {
+            togglePlaylistBatchSelect(track.id);
+          } else {
+            loadTrack(originalIndex, true);
+          }
+        }
       });
 
       playlistEl.appendChild(item);
     });
+    updatePlaylistBatchBar();
   }
 
   function renderUsbPlaylist() {
@@ -5127,74 +4267,115 @@
       empty.className = "empty-state";
       empty.textContent = usbState.connected ? "USB\u8bbe\u5907\u4e2d\u65e0\u97f3\u4e50\u6587\u4ef6..." : "USB\u8bbe\u5907\u672a\u8fde\u63a5";
       playlistEl.appendChild(empty);
+      updatePlaylistBatchBar();
       return;
     }
 
     usbPlaylist.forEach(function (track) {
       var originalIndex = usbPlaylist.indexOf(track);
       var isFav = isUsbTrackFavorite(track);
+      var isPlaying = (originalIndex === currentUsbIndex && activeModule === "usb" && !audio.paused && !audio.ended);
+      var batchMode = playlistIsEditing;
+      var selectedMap = playlistBatchSelected;
+      var isSelected = !!selectedMap[track.id];
       var item = document.createElement("li");
-      item.className = "track-item" + (originalIndex === currentUsbIndex ? " is-active" : "");
+      item.className = "track-item" +
+        (batchMode ? " is-batch-mode" : "") +
+        (isSelected ? " is-selected" : "") +
+        (isPlaying ? " is-playing" : "") +
+        (originalIndex === currentUsbIndex ? " is-active" : "");
       item.tabIndex = 0;
-      item.innerHTML =
-        '<span class="track-index">' +
-        String(originalIndex + 1).padStart(2, "0") +
-        '</span><span class="track-name"><strong></strong><span></span></span>' +
-        '<span class="track-source" title="USB\u8bbe\u5907">USB</span>' +
-        '<span class="track-actions">' +
-        '<button class="mini-button favorite" title="' + (isFav ? "\u53d6\u6d88\u6536\u85cf" : "\u6dfb\u52a0\u5230\u6536\u85cf") + '" aria-pressed="' + String(isFav) + '">' + (isFav ? "♥" : "♡") + '</button>' +
-        '<button class="mini-button remove" title="\u79fb\u9664">&#5220\u9664</button>' +
-        "</span>";
 
-      item.querySelector("strong").textContent = track.title;
-      item.querySelector(".track-name span").textContent = track.artist + " - " + (track.durationLabel || "--:--");
+      var checkboxHtml = '<button class="track-select-checkbox' + (batchMode ? " is-visible" : "") + (isSelected ? " is-checked" : "") + '" type="button" aria-label="选择"></button>';
+      var playingIcon = isPlaying
+        ? '<img class="track-playing-icon" src="./assets/playlist-icons/playing.svg" alt="播放中" />'
+        : '';
+      var trackNum = isPlaying
+        ? ''
+        : '<span class="track-index">' + String(originalIndex + 1).padStart(2, "0") + '</span>';
+      var coverHtml = '<span class="track-cover"><img src="" alt="" onerror="this.style.display=\'none\'" /></span>';
+      var playBtn = isPlaying
+        ? ''
+        : '<button class="track-action-btn track-play-btn" title="播放" aria-label="播放"><svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="M8 5v14l11-7z"/></svg></button>';
+      var favBtnHtml = isFav
+        ? '<button class="track-action-btn track-fav-btn is-active" title="取消收藏" aria-label="取消收藏"><svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg></button>'
+        : '<button class="track-action-btn track-fav-btn" title="添加收藏" aria-label="添加收藏"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg></button>';
+      var deleteBtnHtml = '<button class="track-action-btn track-delete-btn" title="删除" aria-label="删除"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>';
+
+      item.innerHTML =
+        checkboxHtml +
+        playingIcon +
+        trackNum +
+        coverHtml +
+        '<span class="track-info">' +
+        '<span class="track-name"></span>' +
+        '<span class="track-meta"></span>' +
+        '</span>' +
+        '<span class="track-actions">' +
+        playBtn +
+        favBtnHtml +
+        deleteBtnHtml +
+        '</span>';
+
+      item.querySelector(".track-name").textContent = track.title;
+      item.querySelector(".track-meta").textContent = track.artist + " - " + (track.durationLabel || "--:--");
+
+      var coverImg = item.querySelector(".track-cover img");
+      if (track.coverUrl) {
+        coverImg.src = track.coverUrl;
+      } else {
+        coverImg.style.display = "none";
+      }
 
       item.addEventListener("click", function (event) {
-        if (event.target.closest(".mini-button")) {
+        if (event.target.closest(".track-select-checkbox")) {
+          togglePlaylistBatchSelect(track.id);
           return;
         }
-        loadUsbTrack(originalIndex, true);
+        if (event.target.closest(".track-delete-btn")) {
+          confirmDeleteTrack(track.id, "playlist");
+          return;
+        }
+        if (event.target.closest(".track-fav-btn")) {
+          toggleUsbFavoriteById(track.id);
+          return;
+        }
+        if (event.target.closest(".track-play-btn")) {
+          var idx = usbPlaylist.findIndex(function (t) { return t.id === track.id; });
+          if (idx >= 0) playUsbTrackAt(idx);
+          return;
+        }
+        if (batchMode) {
+          togglePlaylistBatchSelect(track.id);
+        } else {
+          var index = usbPlaylist.findIndex(function (t) { return t.id === track.id; });
+          if (index >= 0) playUsbTrackAt(index);
+        }
       });
 
       item.addEventListener("keydown", function (event) {
         if (event.key === "Enter") {
-          loadUsbTrack(originalIndex, true);
+          if (batchMode) {
+            togglePlaylistBatchSelect(track.id);
+          } else {
+            var idx = usbPlaylist.findIndex(function (t) { return t.id === track.id; });
+            if (idx >= 0) playUsbTrackAt(idx);
+          }
         }
-      });
-
-      item.querySelector(".remove").addEventListener("click", function () {
-        usbPlaylist.splice(originalIndex, 1);
-        if (currentUsbIndex >= usbPlaylist.length) {
-          currentUsbIndex = Math.max(0, usbPlaylist.length - 1);
-        }
-        renderUsbPlaylist();
-      });
-
-      item.querySelector(".favorite").addEventListener("click", function (event) {
-        event.stopPropagation();
-        if (isUsbTrackFavorite(track)) {
-          removeUsbFavorite(track);
-        } else {
-          addUsbFavorite(track);
-        }
-        renderUsbPlaylist();
-        renderFavorites();
       });
 
       playlistEl.appendChild(item);
     });
+    updatePlaylistBatchBar();
   }
 
   function renderFavorites() {
-    var localFavoriteTracks = playlist.filter(function (track) {
-      return isTrackFavorite(track);
-    });
     var usbFavoriteTracks = usbPlaylist.filter(function (track) {
       return isUsbTrackFavorite(track);
     });
-    var favoriteTracks = localFavoriteTracks.concat(usbFavoriteTracks.map(function(track) {
+    var favoriteTracks = usbFavoriteTracks.map(function(track) {
       return Object.assign({}, track, { source: 'usb' });
-    }));
+    });
 
     favoriteCount.textContent = "(" + favoriteTracks.length + ")";
     favoriteListEl.innerHTML = "";
@@ -5202,68 +4383,104 @@
     if (!favoriteTracks.length) {
       var empty = document.createElement("li");
       empty.className = "empty-state";
-      empty.textContent = "\u6682\u65e0\u6536\u85cf\uff0c\u70b9\u51fb\u7231\u5fc3\u53ef\u5c06\u6b4c\u66f2\u52a0\u5165\u6536\u85cf";
+      empty.textContent = "暂无收藏，点击爱心可将歌曲加入收藏";
       favoriteListEl.appendChild(empty);
+      updateFavoriteBatchBar();
       return;
     }
 
+    var batchMode = favoriteIsEditing;
+    var selectedMap = favoriteBatchSelected;
+
     favoriteTracks.forEach(function (track) {
       var isUsb = track.source === 'usb';
-      var originalIndex = isUsb ? usbPlaylist.indexOf(track) : playlist.indexOf(track);
-      var isActive = isUsb ? (originalIndex === currentUsbIndex && activeModule === 'usb') : (originalIndex === currentIndex);
+      var originalIndex = isUsb ? usbPlaylist.indexOf(track) : -1;
+      var isPlaying = (isUsb && originalIndex === currentUsbIndex && activeModule === "usb" && !audio.paused && !audio.ended);
+      var isSelected = !!selectedMap[track.id];
       var item = document.createElement("li");
-      item.className = "track-item" + (isActive ? " is-active" : "");
+      item.className = "track-item" +
+        (batchMode ? " is-batch-mode" : "") +
+        (isSelected ? " is-selected" : "") +
+        (isPlaying ? " is-playing" : "") +
+        ((isUsb && originalIndex === currentUsbIndex) ? " is-active" : "");
       item.tabIndex = 0;
+
+      var checkboxHtml = '<button class="track-select-checkbox' + (batchMode ? " is-visible" : "") + (isSelected ? " is-checked" : "") + '" type="button" aria-label="选择"></button>';
+      var playingIcon = isPlaying
+        ? '<img class="track-playing-icon" src="./assets/playlist-icons/playing.svg" alt="播放中" />'
+        : '';
+      var trackNum = isPlaying
+        ? ''
+        : '<span class="track-index">' + String(originalIndex + 1).padStart(2, "0") + '</span>';
+      var coverHtml = '<span class="track-cover"><img src="" alt="" onerror="this.style.display=\'none\'" /></span>';
+      var playBtn = isPlaying
+        ? ''
+        : '<button class="track-action-btn track-play-btn" title="播放" aria-label="播放"><svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="M8 5v14l11-7z"/></svg></button>';
+      var favBtnHtml = '<button class="track-action-btn track-fav-btn is-active" title="取消收藏" aria-label="取消收藏"><svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg></button>';
+      var deleteBtnHtml = '<button class="track-action-btn track-delete-btn" title="删除" aria-label="删除"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>';
+
       item.innerHTML =
-        '<span class="track-index">' +
-        String(originalIndex + 1).padStart(2, "0") +
-        '</span><span class="track-name"><strong></strong><span></span></span>' +
-        (isUsb ? '<span class="track-source" title="USB\u8bbe\u5907">USB</span>' : '') +
+        checkboxHtml +
+        playingIcon +
+        trackNum +
+        coverHtml +
+        '<span class="track-info">' +
+        '<span class="track-name"></span>' +
+        '<span class="track-meta"></span>' +
+        '</span>' +
         '<span class="track-actions">' +
-        '<button class="mini-button remove" title="\u53d6\u6d88\u6536\u85cf">\u5220\u9664</button>' +
-        "</span>";
-      item.querySelector("strong").textContent = track.title;
-      item.querySelector(".track-name span").textContent = track.artist + " · " + (track.durationLabel || "--:--");
+        playBtn +
+        favBtnHtml +
+        deleteBtnHtml +
+        '</span>';
+
+      item.querySelector(".track-name").textContent = track.title;
+      item.querySelector(".track-meta").textContent = track.artist + " - " + (track.durationLabel || "--:--");
+
+      var coverImg = item.querySelector(".track-cover img");
+      if (track.coverUrl) {
+        coverImg.src = track.coverUrl;
+      } else {
+        coverImg.style.display = "none";
+      }
 
       item.addEventListener("click", function (event) {
-        if (event.target.closest(".mini-button")) {
+        if (event.target.closest(".track-select-checkbox")) {
+          toggleFavoriteBatchSelect(track.id);
           return;
         }
-        if (isUsb) {
-          switchToModule("usb");
-          loadUsbTrack(originalIndex, true);
+        if (event.target.closest(".track-delete-btn")) {
+          confirmDeleteTrack(track.id, "favorite");
+          return;
+        }
+        if (event.target.closest(".track-fav-btn")) {
+          removeFavoriteById(track.id);
+          return;
+        }
+        if (event.target.closest(".track-play-btn")) {
+          playTrack(track.id);
+          return;
+        }
+        if (batchMode) {
+          toggleFavoriteBatchSelect(track.id);
         } else {
-          loadTrack(originalIndex, true);
+          playTrack(track.id);
         }
       });
 
       item.addEventListener("keydown", function (event) {
         if (event.key === "Enter") {
-          if (isUsb) {
-            switchToModule("usb");
-            loadUsbTrack(originalIndex, true);
+          if (batchMode) {
+            toggleFavoriteBatchSelect(track.id);
           } else {
-            loadTrack(originalIndex, true);
+            playTrack(track.id);
           }
-        }
-      });
-
-      item.querySelector(".remove").addEventListener("click", function () {
-        if (isUsb) {
-          removeUsbFavorite(track);
-        } else {
-          removeFavorite(track);
-        }
-        renderFavorites();
-        if (isUsb) {
-          renderUsbPlaylist();
-        } else {
-          updateFavoriteState();
         }
       });
 
       favoriteListEl.appendChild(item);
     });
+    updateFavoriteBatchBar();
   }
 
   function toggleFavoriteForCurrentTrack() {
@@ -5278,38 +4495,53 @@
       addFavorite(current);
     }
 
-    updateFavoriteState();
     renderFavorites();
   }
 
   function updateFavoriteState() {
-    var current = playlist[currentIndex];
-    var isFavorite = current ? isTrackFavorite(current) : false;
-    favoriteToggleBtn.setAttribute("aria-pressed", String(isFavorite));
-    favoriteToggleBtn.textContent = isFavorite ? "\u2665" : "\u2661";
-    favoriteToggleBtn.title = isFavorite ? "取消收藏当前曲目" : "收藏当前曲目";
   }
 
   function addFavorite(track) {
-    if (favoriteIds.indexOf(track.id) < 0) {
-      favoriteIds.push(track.id);
-    }
     var key = getTrackFavoriteKey(track);
     if (favoriteKeys.indexOf(key) < 0) {
       favoriteKeys.push(key);
       saveFavoriteKeys();
     }
+    var id = track.id;
+    if (id && favoriteIds.indexOf(id) < 0) {
+      favoriteIds.push(id);
+    }
+    syncFavoriteToNative(track, true);
   }
 
   function removeFavorite(track) {
     var key = getTrackFavoriteKey(track);
-    favoriteIds = favoriteIds.filter(function (trackId) {
-      return trackId !== track.id;
-    });
     favoriteKeys = favoriteKeys.filter(function (trackKey) {
       return trackKey !== key;
     });
+    if (track.id) {
+      favoriteIds = favoriteIds.filter(function (trackId) {
+        return trackId !== track.id;
+      });
+    }
     saveFavoriteKeys();
+    syncFavoriteToNative(track, false);
+  }
+
+  function removeFavoriteById(id) {
+    var track = usbPlaylist.find(function (t) { return t.id === id; });
+    if (!track) return;
+    removeFavorite(track);
+    renderFavorites();
+    renderUsbPlaylist();
+  }
+
+  function playTrack(id) {
+    var index = usbPlaylist.findIndex(function (t) { return t.id === id; });
+    if (index >= 0) {
+      switchToModule("usb");
+      loadUsbTrack(index, true);
+    }
   }
 
   function isTrackFavorite(track) {
@@ -5344,6 +4576,7 @@
     }
 
     closeDrawers();
+    panel.classList.remove("is-hidden");
     panel.classList.add("is-open");
     panel.setAttribute("aria-hidden", "false");
     shell.classList.add("has-drawer");
@@ -5351,11 +4584,14 @@
     playlistPanelBtn.classList.toggle("is-active", type === "playlist");
     favoritePanelBtn.setAttribute("aria-expanded", String(type === "favorite"));
     playlistPanelBtn.setAttribute("aria-expanded", String(type === "playlist"));
+    updateSheetButtons();
   }
 
   function closeDrawers() {
     favoritePanel.classList.remove("is-open");
+    favoritePanel.classList.remove("is-hidden");
     playlistPanel.classList.remove("is-open");
+    playlistPanel.classList.remove("is-hidden");
     favoritePanel.setAttribute("aria-hidden", "true");
     playlistPanel.setAttribute("aria-hidden", "true");
     shell.classList.remove("has-drawer");
@@ -5363,8 +4599,498 @@
     playlistPanelBtn.classList.remove("is-active");
     favoritePanelBtn.setAttribute("aria-expanded", "false");
     playlistPanelBtn.setAttribute("aria-expanded", "false");
+    favoriteIsEditing = false;
+    playlistIsEditing = false;
+    favoriteBatchSelected = {};
+    playlistBatchSelected = {};
+    favoritePanel.classList.remove("is-batch-mode");
+    playlistPanel.classList.remove("is-batch-mode");
+    if (favoriteBatchBar) favoriteBatchBar.hidden = true;
+    if (playlistBatchBar) playlistBatchBar.hidden = true;
+    if (favoriteBatchActions) favoriteBatchActions.hidden = true;
+    if (playlistBatchActions) playlistBatchActions.hidden = true;
   }
 
+  function initSheetDrag(type) {
+    var panel = type === "favorite" ? favoritePanel : playlistPanel;
+    var handle = panel.querySelector("[data-drag-handle]");
+    if (!handle) return;
+
+    handle.addEventListener("pointerdown", function (e) {
+      if (e.button !== 0 && e.pointerType === "mouse") return;
+      e.preventDefault();
+      sheetDragState = {
+        panel: panel,
+        type: type,
+        startY: e.clientY,
+        currentTranslate: 0,
+        isDragging: false
+      };
+      panel.classList.add("is-dragging");
+      handle.setPointerCapture(e.pointerId);
+    });
+
+    handle.addEventListener("pointermove", function (e) {
+      if (!sheetDragState || sheetDragState.panel !== panel) return;
+      var deltaY = e.clientY - sheetDragState.startY;
+      if (!sheetDragState.isDragging && Math.abs(deltaY) > 5) {
+        sheetDragState.isDragging = true;
+      }
+      if (sheetDragState.isDragging) {
+        sheetDragState.currentTranslate = Math.min(0, deltaY);
+        applySheetTransform(panel, sheetDragState.currentTranslate);
+      }
+    });
+
+    handle.addEventListener("pointerup", function (e) {
+      if (!sheetDragState || sheetDragState.panel !== panel) return;
+      panel.classList.remove("is-dragging");
+      try { handle.releasePointerCapture(e.pointerId); } catch (_) {}
+
+      var translate = sheetDragState.currentTranslate;
+      var distance = Math.abs(translate);
+      var threshold = SHEET_HEIGHT * SHEET_HIDE_THRESHOLD;
+
+      if (sheetDragState.isDragging && distance > threshold) {
+        panel.classList.add("is-hidden");
+        panel.classList.remove("is-open");
+        panel.setAttribute("aria-hidden", "true");
+        shell.classList.remove("has-drawer");
+        favoritePanelBtn.classList.remove("is-active");
+        playlistPanelBtn.classList.remove("is-active");
+        favoritePanelBtn.setAttribute("aria-expanded", "false");
+        playlistPanelBtn.setAttribute("aria-expanded", "false");
+      } else {
+        panel.classList.add("is-open");
+        panel.classList.remove("is-hidden");
+      }
+      applySheetTransform(panel, 0);
+      sheetDragState = null;
+    });
+
+    handle.addEventListener("pointercancel", function () {
+      if (!sheetDragState || sheetDragState.panel !== panel) return;
+      panel.classList.remove("is-dragging");
+      applySheetTransform(panel, 0);
+      sheetDragState = null;
+    });
+
+    handle.addEventListener("click", function (e) {
+      if (sheetDragState && sheetDragState.isDragging) return;
+      if (panel.classList.contains("is-open")) {
+        closeDrawers();
+      }
+    });
+  }
+
+  function applySheetTransform(panel, translate) {
+    var isTabletOrDesktop = window.matchMedia("(min-width: 768px)").matches;
+    if (isTabletOrDesktop) {
+      panel.style.transform = "translateX(-50%) translateY(" + translate + "px)";
+    } else {
+      panel.style.transform = "translateY(" + translate + "px)";
+    }
+    if (translate === 0) {
+      panel.style.transform = "";
+    }
+  }
+
+  var trackDragState = null;
+  var TRACK_DRAG_THRESHOLD = 5;
+
+  function initTrackItemDrag(container, listType) {
+    if (!container) return;
+    var handles = container.querySelectorAll("[data-drag-handle-item]");
+    handles.forEach(function (handle) {
+      if (handle.__dragInitialized) return;
+      handle.__dragInitialized = true;
+
+      handle.addEventListener("pointerdown", function (e) {
+        if (e.button !== 0 && e.pointerType === "mouse") return;
+        e.preventDefault();
+        e.stopPropagation();
+        var item = handle.closest(".track-item");
+        if (!item) return;
+
+        trackDragState = {
+          item: item,
+          list: container,
+          listType: listType,
+          startY: e.clientY,
+          currentY: e.clientY,
+          isDragging: false,
+          handle: handle,
+          pointerId: e.pointerId
+        };
+        handle.setPointerCapture(e.pointerId);
+      });
+
+      handle.addEventListener("pointermove", function (e) {
+        if (!trackDragState || trackDragState.handle !== handle) return;
+        trackDragState.currentY = e.clientY;
+        var deltaY = trackDragState.currentY - trackDragState.startY;
+
+        if (!trackDragState.isDragging && Math.abs(deltaY) > TRACK_DRAG_THRESHOLD) {
+          trackDragState.isDragging = true;
+          trackDragState.item.classList.add("is-dragging");
+        }
+
+        if (trackDragState.isDragging) {
+          e.preventDefault();
+          var items = Array.prototype.slice.call(trackDragState.list.querySelectorAll(".track-item"));
+          var currentIndex = items.indexOf(trackDragState.item);
+          var rect = trackDragState.item.getBoundingClientRect();
+          var itemHeight = rect.height;
+          var newIndex = currentIndex;
+
+          for (var i = 0; i < items.length; i++) {
+            if (i === currentIndex) continue;
+            var otherRect = items[i].getBoundingClientRect();
+            var otherCenter = otherRect.top + otherRect.height / 2;
+            if (trackDragState.currentY < otherCenter) {
+              if (i < currentIndex) newIndex = Math.min(newIndex, i);
+            } else {
+              if (i > currentIndex) newIndex = Math.max(newIndex, i);
+            }
+          }
+
+          if (newIndex !== currentIndex) {
+            if (newIndex < currentIndex) {
+              var refItem = items[newIndex];
+              trackDragState.list.insertBefore(trackDragState.item, refItem);
+            } else {
+              var refItem2 = items[newIndex + 1];
+              if (refItem2) {
+                trackDragState.list.insertBefore(trackDragState.item, refItem2);
+              } else {
+                trackDragState.list.appendChild(trackDragState.item);
+              }
+            }
+            items = Array.prototype.slice.call(trackDragState.list.querySelectorAll(".track-item"));
+          }
+        }
+      });
+
+      handle.addEventListener("pointerup", function (e) {
+        if (!trackDragState || trackDragState.handle !== handle) return;
+        trackDragState.item.classList.remove("is-dragging");
+        try { handle.releasePointerCapture(e.pointerId); } catch (_) {}
+
+        if (!trackDragState.isDragging) {
+          closeDrawers();
+        } else {
+          var newOrder = Array.prototype.slice.call(trackDragState.list.querySelectorAll(".track-item"));
+          var newIndices = newOrder.map(function (item) {
+            var trackId = item.getAttribute("data-track-id");
+            if (!trackId) {
+              var infoEl = item.querySelector(".track-name");
+              return infoEl ? infoEl.textContent : null;
+            }
+            return trackId;
+          });
+
+          if (trackDragState.listType === "playlist") {
+            reorderPlaylistByDom();
+          } else if (trackDragState.listType === "usb") {
+            reorderUsbPlaylistByDom();
+          } else if (trackDragState.listType === "favorite") {
+            reorderFavoritesByDom();
+          }
+        }
+
+        trackDragState = null;
+      });
+
+      handle.addEventListener("pointercancel", function () {
+        if (!trackDragState || trackDragState.handle !== handle) return;
+        trackDragState.item.classList.remove("is-dragging");
+        trackDragState = null;
+      });
+    });
+  }
+
+  function reorderPlaylistByDom() {
+    var items = Array.prototype.slice.call(playlistEl.querySelectorAll(".track-item"));
+    var newOrder = [];
+    items.forEach(function (item) {
+      var titleEl = item.querySelector(".track-name");
+      var metaEl = item.querySelector(".track-meta");
+      if (!titleEl) return;
+      var title = titleEl.textContent;
+      var meta = metaEl ? metaEl.textContent : "";
+      var artist = meta.split(" - ")[0] || "";
+      var found = playlist.find(function (t) { return t.title === title && t.artist === artist; });
+      if (found) newOrder.push(found);
+    });
+    if (newOrder.length === playlist.length) {
+      playlist = newOrder;
+      if (playlistPlayMode === "loop-single" && currentIndex < newOrder.length) {
+        // keep
+      }
+      renderPlaylist();
+    }
+  }
+
+  function reorderUsbPlaylistByDom() {
+    var items = Array.prototype.slice.call(playlistEl.querySelectorAll(".track-item"));
+    var newOrder = [];
+    items.forEach(function (item) {
+      var titleEl = item.querySelector(".track-name");
+      var metaEl = item.querySelector(".track-meta");
+      if (!titleEl) return;
+      var title = titleEl.textContent;
+      var meta = metaEl ? metaEl.textContent : "";
+      var artist = meta.split(" - ")[0] || "";
+      var found = usbPlaylist.find(function (t) { return t.title === title && t.artist === artist; });
+      if (found) newOrder.push(found);
+    });
+    if (newOrder.length === usbPlaylist.length) {
+      var currentTrack = usbPlaylist[currentUsbIndex];
+      usbPlaylist = newOrder;
+      var newIndex = usbPlaylist.indexOf(currentTrack);
+      if (newIndex !== -1) currentUsbIndex = newIndex;
+      renderUsbPlaylist();
+    }
+  }
+
+  function reorderFavoritesByDom() {
+    var items = Array.prototype.slice.call(favoriteListEl.querySelectorAll(".track-item"));
+    var newOrder = [];
+    items.forEach(function (item) {
+      var titleEl = item.querySelector(".track-name");
+      var metaEl = item.querySelector(".track-meta");
+      if (!titleEl) return;
+      var title = titleEl.textContent;
+      var meta = metaEl ? metaEl.textContent : "";
+      var artist = meta.split(" - ")[0] || "";
+      var found = usbPlaylist.find(function (t) { return t.title === title && t.artist === artist; });
+      if (found) newOrder.push(found);
+    });
+    if (newOrder.length > 0) {
+      favoriteIds = newOrder.map(function (t) { return t.id; });
+      favoriteKeys = newOrder.map(function (t) { return getTrackFavoriteKey(t); });
+      window.localStorage.setItem(FAVORITE_STORAGE_KEY, JSON.stringify(favoriteKeys));
+      renderFavorites();
+      renderUsbPlaylist();
+    }
+  }
+
+  function toggleSheetPlay(type) {
+    var panel = type === "favorite" ? favoritePanel : playlistPanel;
+    var hasTracks = type === "favorite" ? favoriteIds.length > 0 : usbPlaylist.length > 0;
+    
+    if (!hasTracks) return;
+
+    var isPlaying = !audio.paused && !audio.ended && audio.src;
+    var newState = !isPlaying;
+
+    if (newState) {
+      if (type === "favorite") {
+        if (favoriteIds.length === 0) return;
+        if (activeModule !== "bluetooth") {
+          playTrack(favoriteIds[0]);
+        }
+      } else {
+        if (usbPlaylist.length === 0) return;
+        if (activeModule !== "usb") {
+          switchModule("usb");
+        }
+        if (activeAudioSource !== "usb") {
+          loadUsbTrack(currentUsbIndex, true, 0);
+        }
+      }
+      audio.play();
+    } else {
+      audio.pause();
+    }
+  }
+
+  function sheetModeToMain(mode) {
+    var map = { "loop-list": "folder-loop", "loop-single": "single", "shuffle": "folder-random" };
+    return map[mode] || "folder-loop";
+  }
+
+  function mainModeToSheet(mode) {
+    var map = { "folder-loop": "loop-list", "single": "loop-single", "folder-random": "shuffle" };
+    return map[mode] || "loop-list";
+  }
+
+  function cycleSheetPlayMode(type) {
+    var currentMode = type === "favorite" ? favoritePlayMode : playlistPlayMode;
+    var modes = ["loop-list", "loop-single", "shuffle"];
+    var currentIndex = modes.indexOf(currentMode);
+    var nextIndex = (currentIndex + 1) % modes.length;
+    var newMode = modes[nextIndex];
+
+    if (type === "favorite") {
+      favoritePlayMode = newMode;
+    } else {
+      playlistPlayMode = newMode;
+    }
+
+    var mainEquivalent = sheetModeToMain(newMode);
+    usbPlayMode = mainEquivalent;
+    audio.loop = usbPlayMode === "single";
+    if (usbShuffleHistory.length) {
+      usbShuffleHistory = [];
+    }
+    playlistPlayMode = newMode;
+    favoritePlayMode = newMode;
+
+    updateSheetModeButton("favorite");
+    updateSheetModeButton("playlist");
+    updateUsbPlayModeButton();
+    if (activeAudioSource === "usb" && usbPlaylist.length && audio.paused) {
+      audio.play()["catch"](function () {
+        updateUsbPlaybackUi();
+      });
+    }
+  }
+
+  function toggleSheetEdit(type) {
+    var panel = type === "favorite" ? favoritePanel : playlistPanel;
+    var isEditing = type === "favorite" ? favoriteIsEditing : playlistIsEditing;
+    var newState = !isEditing;
+
+    if (type === "favorite") {
+        favoriteIsEditing = newState;
+        if (!newState) {
+            favoriteBatchSelected = {};
+        }
+    } else {
+        playlistIsEditing = newState;
+        if (!newState) {
+            playlistBatchSelected = {};
+        }
+    }
+
+    panel.classList.toggle("is-batch-mode", newState);
+
+    var batchBar = type === "favorite" ? favoriteBatchBar : playlistBatchBar;
+    if (batchBar) {
+        batchBar.hidden = !newState;
+    }
+
+    var batchActions = type === "favorite" ? favoriteBatchActions : playlistBatchActions;
+    if (batchActions) {
+        batchActions.hidden = !newState;
+    }
+
+    if (type === "favorite") {
+        renderFavorites();
+    } else {
+        if (activeModule === "usb") {
+            renderUsbPlaylist();
+        } else {
+            renderPlaylist();
+        }
+    }
+  }
+
+  function updateSheetButtons() {
+    updateSheetPlayButtonState("favorite");
+    updateSheetPlayButtonState("playlist");
+    updateSheetModeButton("favorite");
+    updateSheetModeButton("playlist");
+  }
+
+  function updateSheetPlayButtonState(type) {
+    var btn = type === "favorite" ? favoritePlayBtn : playlistPlayBtn;
+    if (!btn) return;
+    var panel = type === "favorite" ? favoritePanel : playlistPanel;
+    var isPlaying = !audio.paused && !audio.ended && audio.src;
+    panel.setAttribute("data-playing", String(isPlaying));
+    btn.setAttribute("aria-pressed", String(isPlaying));
+  }
+
+  function updateSheetModeButton(type) {
+    var btn = type === "favorite" ? favoritePlayModeBtn : playlistPlayModeBtn;
+    var labelEl = type === "favorite" ? favoriteModeLabel : playlistModeLabel;
+    if (!btn) return;
+    var mode = type === "favorite" ? favoritePlayMode : playlistPlayMode;
+    var label = MODE_LABELS[mode] || "全部文件循环";
+    btn.innerHTML = getModeSvg(mode);
+    btn.setAttribute("data-mode", mode);
+    btn.setAttribute("title", label);
+    btn.setAttribute("aria-label", label);
+    if (labelEl) {
+      labelEl.textContent = label;
+    }
+  }
+
+  function handleTrackItemClick(id, type, e) {
+    if (e && e.target.closest(".track-drag-handle")) {
+      return;
+    }
+    if (e && e.target.closest(".track-action-btn")) {
+      var actionBtn = e.target.closest(".track-action-btn");
+      var action = actionBtn.getAttribute("data-action");
+      if (action === "favorite") {
+        if (type === "playlist") {
+          toggleUsbFavoriteById(id);
+        }
+        return;
+      }
+      if (action === "delete") {
+        if (type === "favorite") {
+          removeFavoriteById(id);
+        } else {
+          removeUsbTrackById(id);
+        }
+        return;
+      }
+      if (action === "play") {
+        playTrackById(id, type);
+        return;
+      }
+    }
+    if (type === "favorite") {
+      playTrack(id);
+    } else {
+      var index = usbPlaylist.findIndex(function (t) { return t.id === id; });
+      if (index >= 0) playUsbTrackAt(index);
+    }
+  }
+
+  function playTrackById(id, type) {
+    if (type === "favorite") {
+      playTrack(id);
+    } else {
+      var index = usbPlaylist.findIndex(function (t) { return t.id === id; });
+      if (index >= 0) {
+        playUsbTrackAt(index);
+      }
+    }
+  }
+
+  function toggleUsbFavoriteById(id) {
+    var track = usbPlaylist.find(function (t) { return t.id === id; });
+    if (!track) return;
+    var isFav = isUsbTrackFavorite(track);
+    if (isFav) {
+      removeUsbFavorite(track);
+    } else {
+      addUsbFavorite(track);
+    }
+    renderUsbPlaylist();
+    renderFavorites();
+  }
+
+  function removeUsbTrackById(id) {
+    var index = usbPlaylist.findIndex(function (t) { return t.id === id; });
+    if (index === -1) return;
+    usbPlaylist.splice(index, 1);
+    if (index === currentUsbIndex) {
+      audio.pause();
+      audio.removeAttribute("src");
+      audio.load();
+      usbCurrentIndex = Math.min(index, usbPlaylist.length - 1);
+      updateUsbTransport();
+    } else if (index < currentUsbIndex) {
+      usbCurrentIndex--;
+    }
+    renderUsbPlaylist();
+  }
 
 
 
@@ -5395,15 +5121,6 @@
       rememberUsbResumePoint();
       return;
     }
-
-    progress.max = audio.duration;
-    durationEl.textContent = formatTime(audio.duration);
-    if (playlist[currentIndex]) {
-      playlist[currentIndex].durationLabel = formatTime(audio.duration);
-      savePlaylistMetadata();
-      renderPlaylist();
-      renderFavorites();
-    }
   }
 
   function updateProgress() {
@@ -5416,28 +5133,30 @@
     if (isSeeking) {
       return;
     }
-
-    var safeDuration = Number.isFinite(audio.duration) ? audio.duration : 100;
-    progress.max = safeDuration;
-    progress.value = audio.currentTime || 0;
-    currentTimeEl.textContent = formatTime(audio.currentTime || 0);
-    updateRangeFill(progress);
-    scheduleLocalResumeSave();
   }
 
   function updatePlayState() {
     if (activeAudioSource === "usb") {
       updateUsbPlaybackUi();
       notifyNativePlaybackState();
+      updateSheetPlayButtonState("favorite");
+      updateSheetPlayButtonState("playlist");
+      updateMainPlayButtonState();
+      if (favoritePanel.classList.contains("is-open")) renderFavorites();
+      if (playlistPanel.classList.contains("is-open")) renderUsbPlaylist();
       return;
     }
+    updateSheetPlayButtonState("favorite");
+    updateSheetPlayButtonState("playlist");
+    updateMainPlayButtonState();
+  }
 
-    var isPlaying = !audio.paused;
-    playPauseBtn.classList.toggle("is-playing", isPlaying);
-    playPauseBtn.setAttribute("aria-pressed", isPlaying ? "true" : "false");
-    dropZone.classList.toggle("is-playing", isPlaying);
-    rememberLocalResumePoint();
-    notifyNativePlaybackState();
+  function updateMainPlayButtonState() {
+    if (!usbPlayBtn) return;
+    var isPlaying = activeAudioSource === "usb" && !audio.paused && !audio.ended;
+    usbPlayBtn.classList.toggle("is-playing", isPlaying);
+    usbPlayBtn.setAttribute("aria-pressed", String(isPlaying));
+    usbPlayBtn.setAttribute("title", isPlaying ? "暂停" : "播放");
   }
 
   function notifyNativePlaybackState() {
@@ -5452,7 +5171,6 @@
         Boolean(current && !audio.paused)
       );
     } catch (error) {
-      // Native bridge is optional in browser preview.
     }
   }
 
@@ -5474,47 +5192,6 @@
     } else if (command === "stop") {
       stopPlayback();
     }
-  }
-
-  function handleNativeVolumeChanged(state) {
-    if (!state || typeof state.volume !== "number") {
-      return;
-    }
-    var nativeVolume = Math.max(0, Math.min(1, state.volume));
-    
-    switch (activeModule) {
-      case "bluetooth":
-        if (btVolume) {
-          btVolume.value = nativeVolume;
-          btVolumeValue.textContent = Math.round(nativeVolume * 100) + "%";
-          updateRangeFill(btVolume);
-        }
-        break;
-      case "radio":
-        if (radioVolume) {
-          radioVolume.value = nativeVolume;
-          radioVolumeValue.textContent = Math.round(nativeVolume * 100) + "%";
-          updateRangeFill(radioVolume);
-        }
-        break;
-      case "usb":
-        if (usbVolume) {
-          usbVolume.value = nativeVolume;
-          usbVolumeValue.textContent = Math.round(nativeVolume * 100) + "%";
-          updateRangeFill(usbVolume);
-        }
-        break;
-      default:
-        if (volume) {
-          volume.value = nativeVolume;
-          volumeValue.textContent = Math.round(nativeVolume * 100) + "%";
-          updateRangeFill(volume);
-        }
-        break;
-    }
-    
-    audio.volume = nativeVolume;
-    applyMediaVolume(nativeVolume);
   }
 
   function updateRangeFill(input) {
@@ -5543,28 +5220,21 @@
     } else if (event.key === "ArrowRight") {
       if (activeModule === "radio") {
         seekRadio(0.2);
-      } else if (activeModule === "local") {
+      } else if (activeModule === "usb") {
         audio.currentTime = Math.min((audio.currentTime || 0) + 5, audio.duration || 0);
       }
     } else if (event.key === "ArrowLeft") {
       if (activeModule === "radio") {
         seekRadio(-0.2);
-      } else if (activeModule === "local") {
+      } else if (activeModule === "usb") {
         audio.currentTime = Math.max((audio.currentTime || 0) - 5, 0);
       }
-    } else if (event.key === "ArrowUp" || event.code === "VolumeUp") {
+    } else if (event.key === "ArrowUp") {
       event.preventDefault();
       adjustActiveVolume(0.05);
-    } else if (event.key === "ArrowDown" || event.code === "VolumeDown") {
+    } else if (event.key === "ArrowDown") {
       event.preventDefault();
       adjustActiveVolume(-0.05);
-    } else if (event.code === "VolumeMute") {
-      event.preventDefault();
-      if (audio.volume > 0) {
-        setVolume(0);
-      } else {
-        setVolume(0.8);
-      }
     } else if (event.key === "Escape") {
       closeLyricsFull();
       closeDrawers();
@@ -5573,9 +5243,15 @@
 
   function setVolume(value) {
     audio.volume = Math.min(1, Math.max(0, value));
-    volume.value = audio.volume;
-    volumeValue.textContent = Math.round(audio.volume * 100) + "%";
-    updateRangeFill(volume);
+    if (usbVolume) {
+      usbVolume.value = audio.volume;
+    }
+    if (usbVolumeValue) {
+      usbVolumeValue.textContent = Math.round(audio.volume * 100) + "%";
+    }
+    if (usbVolume) {
+      updateRangeFill(usbVolume);
+    }
   }
 
   function adjustActiveVolume(delta) {
@@ -5607,16 +5283,24 @@
   function resetPlayer() {
     audio.removeAttribute("src");
     audio.load();
-    trackTitle.textContent = "\u672a\u9009\u62e9\u97f3\u4e50";
-    trackArtist.textContent = "\u8bf7\u5bfc\u5165\u672c\u5730\u97f3\u4e50\u6587\u4ef6";
-    currentTimeEl.textContent = "0:00";
-    durationEl.textContent = "0:00";
-    progress.value = 0;
-    progress.max = 100;
-    updateRangeFill(progress);
-    updateAlbumArtwork(null);
+    if (usbTrackTitle) {
+      usbTrackTitle.textContent = "";
+    }
+    if (usbTrackMeta) {
+      usbTrackMeta.textContent = "";
+    }
+    if (usbCurrentTime) {
+      usbCurrentTime.textContent = "0:00";
+    }
+    if (usbDuration) {
+      usbDuration.textContent = "0:00";
+    }
+    if (usbProgress) {
+      usbProgress.value = 0;
+      usbProgress.max = 100;
+      updateRangeFill(usbProgress);
+    }
     closeLyricsFull();
-    renderLyricsPreview(createLyricsForTrack({ title: "\u672a\u9009\u62e9\u97f3\u4e50", artist: "\u672c\u5730\u97f3\u4e50" }, 180), 0);
     if (lyricsFullList) {
       lyricsFullList.innerHTML = "";
     }
@@ -5634,104 +5318,7 @@
     return index;
   }
 
-  function getRandomIndex() {
-    if (playlist.length < 2) {
-      return currentIndex;
-    }
-
-    var nextIndex = currentIndex;
-    while (nextIndex === currentIndex) {
-      nextIndex = Math.floor(Math.random() * playlist.length);
-    }
-    return nextIndex;
-  }
-
-  function getNextLocalIndex() {
-    if (localLoopMode === "single") {
-      return currentIndex;
-    }
-    if (localRandomMode === "folder") {
-      return getRandomIndexFromIndexes(getCurrentFolderIndexes());
-    }
-    if (localRandomMode === "all") {
-      return getRandomIndexFromIndexes(getPlayableLocalIndexes());
-    }
-    return getSequentialLocalIndex(1);
-  }
-
-  function getPreviousLocalIndex() {
-    if (localLoopMode === "single") {
-      return currentIndex;
-    }
-    if (localRandomMode === "folder") {
-      return getRandomIndexFromIndexes(getCurrentFolderIndexes());
-    }
-    if (localRandomMode === "all") {
-      return getRandomIndexFromIndexes(getPlayableLocalIndexes());
-    }
-    return getSequentialLocalIndex(-1);
-  }
-
-  function getSequentialLocalIndex(delta) {
-    var indexes = localLoopMode === "folder" ? getCurrentFolderIndexes() : getPlayableLocalIndexes();
-    if (!indexes.length) {
-      return currentIndex;
-    }
-    var position = indexes.indexOf(currentIndex);
-    if (position < 0) {
-      return indexes[0];
-    }
-    return indexes[(position + delta + indexes.length) % indexes.length];
-  }
-
-  function getPlayableLocalIndexes() {
-    return playlist.map(function (track, index) {
-      return track && track.source !== "usb" ? index : -1;
-    }).filter(function (index) {
-      return index >= 0;
-    });
-  }
-
-  function getCurrentFolderIndexes() {
-    var current = playlist[currentIndex];
-    var folderKey = getTrackFolderKey(current);
-    var indexes = getPlayableLocalIndexes().filter(function (index) {
-      return getTrackFolderKey(playlist[index]) === folderKey;
-    });
-    return indexes.length ? indexes : getPlayableLocalIndexes();
-  }
-
-  function getTrackFolderKey(track) {
-    return track && track.folderKey ? track.folderKey : "local-root";
-  }
-
-  function isAtEndOfLocalList() {
-    var indexes = getPlayableLocalIndexes();
-    return indexes.length > 0 && currentIndex === indexes[indexes.length - 1];
-  }
-
-  function getRandomIndexFromIndexes(indexes) {
-    if (!indexes || indexes.length < 2) {
-      return indexes && indexes.length ? indexes[0] : currentIndex;
-    }
-    var nextIndex = currentIndex;
-    while (nextIndex === currentIndex) {
-      nextIndex = indexes[Math.floor(Math.random() * indexes.length)];
-    }
-    return nextIndex;
-  }
-
   function updateAlbumArtwork(track) {
-    var coverUrl = track && track.coverUrl ? track.coverUrl : DEFAULT_ALBUM_COVER;
-    if (albumArt) {
-      albumArt.src = coverUrl;
-      albumArt.removeAttribute("srcset");
-      albumArt.alt = track && track.coverUrl ? "\u4e13\u8f91\u5c01\u9762" : "\u9ed8\u8ba4\u4e13\u8f91\u5c01\u9762";
-    }
-    if (dropZone) {
-      dropZone.style.setProperty("--album-bg", "url(\"" + coverUrl.replace(/"/g, "%22") + "\")");
-      dropZone.classList.toggle("has-custom-cover", Boolean(track && track.coverUrl));
-    }
   }
 
   function formatTime(value) {
@@ -5788,12 +5375,17 @@
   var visualizerCanvas = null;
   var visualizerCtx = null;
   var visualizerAnimationId = null;
-  var isVisualizerActive = false;
+  var visualizerMode = "stopped";
   var visualizerBlocks = [];
   var visualizerGridSize = 14;
   var visualizerFrequencyData = null;
+  var visualizerWaveformData = null;
   var visualizerLastFrameTime = 0;
   var visualizerFrameInterval = 1000 / 30;
+  var visualizerFreqHistory = [];
+  var visualizerBeatEnergy = 0;
+  var visualizerBeatCooldown = 0;
+  var visualizerCachedCanvases = null;
 
   function initAudioVisualizer() {
     var canvases = document.querySelectorAll(".audio-visualizer");
@@ -5802,6 +5394,13 @@
     visualizerCanvas = canvases[0];
     visualizerCtx = visualizerCanvas.getContext("2d");
     resizeVisualizer();
+
+    if (!visualizerFrequencyData) {
+      visualizerFrequencyData = new Uint8Array(256);
+    }
+    if (!visualizerWaveformData) {
+      visualizerWaveformData = new Uint8Array(256);
+    }
 
     try {
       var AudioContextConstructor = window.AudioContext || window.webkitAudioContext;
@@ -5814,7 +5413,8 @@
       if (!audioSourceCreated) {
         audioSource = audioVisualizerContext.createMediaElementSource(audio);
         audioAnalyser = audioVisualizerContext.createAnalyser();
-        audioAnalyser.fftSize = 256;
+        audioAnalyser.fftSize = 512;
+        audioAnalyser.smoothingTimeConstant = 0.75;
         audioGainNode = audioVisualizerContext.createGain();
         audioGainNode.gain.value = audio.volume;
 
@@ -5824,6 +5424,7 @@
 
         audioSourceCreated = true;
         visualizerFrequencyData = new Uint8Array(audioAnalyser.frequencyBinCount);
+        visualizerWaveformData = new Uint8Array(audioAnalyser.fftSize);
 
         audio.addEventListener("volumechange", function() {
           if (audioGainNode) {
@@ -5843,7 +5444,15 @@
   function initVisualizerBlocks() {
     visualizerBlocks = [];
     for (var i = 0; i < 14 * 10; i++) {
-      visualizerBlocks[i] = { height: 4, velocity: 0 };
+      var seed = Math.sin(i * 127.1 + 311.7) * 43758.5453;
+      var frac = seed - Math.floor(seed);
+      visualizerBlocks[i] = {
+        height: 4,
+        velocity: 0,
+        amplitudeBias: 0.8 + frac * 0.4,
+        phaseBias: frac * Math.PI * 2,
+        speedBias: 0.7 + frac * 0.6
+      };
     }
   }
 
@@ -5853,17 +5462,45 @@
       canvas.width = canvas.offsetWidth;
       canvas.height = canvas.offsetHeight;
     });
+    visualizerCachedCanvases = null;
     initVisualizerBlocks();
   }
 
-  function startVisualizer() {
-    if (!audioVisualizerContext || !audioAnalyser || isVisualizerActive) return;
-    isVisualizerActive = true;
-    
+  function startIdleVisualizer() {
+    if (visualizerMode === "idle") return;
+    visualizerMode = "idle";
+
+    cancelAnimationFrame(visualizerAnimationId);
+
+    resizeVisualizer();
+
     var activeModuleCanvases = document.querySelectorAll(".module-panel.is-active .audio-visualizer");
     activeModuleCanvases.forEach(function(canvas) {
       canvas.classList.add("is-active");
     });
+    visualizerCachedCanvases = activeModuleCanvases;
+
+    if (audioVisualizerContext && audioVisualizerContext.state === "suspended") {
+      audioVisualizerContext.resume();
+    }
+
+    visualize();
+  }
+
+  function startVisualizer() {
+    if (!audioVisualizerContext || !audioAnalyser) return;
+    if (visualizerMode === "playing") return;
+    visualizerMode = "playing";
+
+    cancelAnimationFrame(visualizerAnimationId);
+
+    resizeVisualizer();
+
+    var activeModuleCanvases = document.querySelectorAll(".module-panel.is-active .audio-visualizer");
+    activeModuleCanvases.forEach(function(canvas) {
+      canvas.classList.add("is-active");
+    });
+    visualizerCachedCanvases = activeModuleCanvases;
 
     if (audioVisualizerContext.state === "suspended") {
       audioVisualizerContext.resume();
@@ -5872,8 +5509,13 @@
     visualize();
   }
 
+  function pauseVisualizer() {
+    if (visualizerMode !== "playing") return;
+    visualizerMode = "paused";
+  }
+
   function stopVisualizer() {
-    isVisualizerActive = false;
+    visualizerMode = "stopped";
     cancelAnimationFrame(visualizerAnimationId);
 
     var canvases = document.querySelectorAll(".audio-visualizer");
@@ -5883,73 +5525,123 @@
       ctx.clearRect(0, 0, canvas.width, canvas.height);
     });
 
+    visualizerFreqHistory = [];
+    visualizerBeatEnergy = 0;
+    visualizerBeatCooldown = 0;
+    visualizerCachedCanvases = null;
     initVisualizerBlocks();
   }
 
   function visualize() {
-    if (!isVisualizerActive || !audioAnalyser) return;
+    if (visualizerMode === "stopped") return;
 
     visualizerAnimationId = requestAnimationFrame(visualize);
 
-    var now = Date.now();
+    var now = performance.now();
     if (now - visualizerLastFrameTime < visualizerFrameInterval) return;
     visualizerLastFrameTime = now;
 
-    audioAnalyser.getByteFrequencyData(visualizerFrequencyData);
+    var freqLen;
 
-    var canvases = document.querySelectorAll(".audio-visualizer.is-active");
-    if (!canvases.length) return;
-
-    var isPlaying = !audio.paused;
-    
-    var freqLen = visualizerFrequencyData.length;
-    var lowFreq = averageArray(visualizerFrequencyData.slice(0, Math.floor(freqLen * 0.20)));
-    var lowMidFreq = averageArray(visualizerFrequencyData.slice(Math.floor(freqLen * 0.20), Math.floor(freqLen * 0.30)));
-    var midFreq = averageArray(visualizerFrequencyData.slice(Math.floor(freqLen * 0.30), Math.floor(freqLen * 0.45)));
-    var highMidFreq = averageArray(visualizerFrequencyData.slice(Math.floor(freqLen * 0.45), Math.floor(freqLen * 0.7)));
-    var highFreq = averageArray(visualizerFrequencyData.slice(Math.floor(freqLen * 0.7)));
-
-    var lowScale, lowMidScale, midScale, highMidScale, highScale;
-    if (isPlaying) {
-      lowScale = lowFreq / 255;
-      lowMidScale = lowMidFreq / 255;
-      midScale = midFreq / 255;
-      highMidScale = highMidFreq / 255;
-      highScale = highFreq / 255;
+    if (visualizerMode === "idle") {
+      if (!visualizerFrequencyData) {
+        visualizerFrequencyData = new Uint8Array(256);
+      }
+      freqLen = visualizerFrequencyData.length;
+      for (var i = 0; i < freqLen; i++) {
+        visualizerFrequencyData[i] = 20;
+      }
+    } else if (visualizerMode === "playing") {
+      if (!audioAnalyser) return;
+      audioAnalyser.getByteFrequencyData(visualizerFrequencyData);
+      audioAnalyser.getByteTimeDomainData(visualizerWaveformData);
+      freqLen = visualizerFrequencyData.length;
+    } else if (visualizerMode === "paused") {
+      freqLen = visualizerFrequencyData.length;
     } else {
-      var pauseOffset = now * 0.001;
-      lowScale = 0.15 + Math.sin(pauseOffset * 1.5 + 0) * 0.05;
-      lowMidScale = 0.12 + Math.sin(pauseOffset * 2.0 + 0.5) * 0.04;
-      midScale = 0.18 + Math.sin(pauseOffset * 2.5 + 1.0) * 0.06;
-      highMidScale = 0.12 + Math.sin(pauseOffset * 3.0 + 1.5) * 0.04;
-      highScale = 0.08 + Math.sin(pauseOffset * 3.5 + 2.0) * 0.03;
+      return;
     }
+
+    var lowFreq = averageArray(visualizerFrequencyData.slice(0, Math.floor(freqLen * 0.15)));
+    var lowMidFreq = averageArray(visualizerFrequencyData.slice(Math.floor(freqLen * 0.15), Math.floor(freqLen * 0.30)));
+    var midFreq = averageArray(visualizerFrequencyData.slice(Math.floor(freqLen * 0.30), Math.floor(freqLen * 0.50)));
+    var highMidFreq = averageArray(visualizerFrequencyData.slice(Math.floor(freqLen * 0.50), Math.floor(freqLen * 0.75)));
+    var highFreq = averageArray(visualizerFrequencyData.slice(Math.floor(freqLen * 0.75)));
+
+    var lowScale = lowFreq / 255;
+    var lowMidScale = lowMidFreq / 255;
+    var midScale = midFreq / 255;
+    var highMidScale = highMidFreq / 255;
+    var highScale = highFreq / 255;
+
+    var frameEnergy = 0;
+    for (var ei = 0; ei < freqLen; ei++) {
+      var v = visualizerFrequencyData[ei] / 255;
+      frameEnergy += v * v;
+    }
+    frameEnergy = Math.sqrt(frameEnergy / freqLen);
+
+    if (visualizerMode === "playing") {
+      visualizerFreqHistory.push(frameEnergy);
+      if (visualizerFreqHistory.length > 15) visualizerFreqHistory.shift();
+
+      var beatSum = 0;
+      for (var bi = 0; bi < visualizerFreqHistory.length; bi++) {
+        beatSum += visualizerFreqHistory[bi];
+      }
+      var beatAvg = beatSum / visualizerFreqHistory.length;
+      var beatThreshold = beatAvg * 1.25;
+
+      if (frameEnergy > beatThreshold && visualizerBeatCooldown <= 0) {
+        visualizerBeatEnergy = Math.min(1, (frameEnergy - beatAvg) * 3);
+        visualizerBeatCooldown = 8;
+      } else {
+        visualizerBeatEnergy *= 0.85;
+        visualizerBeatCooldown = Math.max(0, visualizerBeatCooldown - 1);
+      }
+    } else if (visualizerMode === "idle") {
+      visualizerBeatEnergy = 0;
+    } else {
+      visualizerBeatEnergy *= 0.92;
+    }
+
+    var emotionCool = lowScale / Math.max(highScale, 0.01);
+    var emotionTemp = Math.min(1, emotionCool / 2);
+
+    var canvases = visualizerCachedCanvases;
+    if (!canvases || !canvases.length) {
+      canvases = document.querySelectorAll(".audio-visualizer.is-active");
+      visualizerCachedCanvases = canvases;
+    }
+    if (!canvases.length) return;
 
     var viewAngle = Math.PI / 4;
     var cosView = Math.cos(viewAngle);
     var sinView = Math.sin(viewAngle);
-
-    var elevationAngle = Math.PI / 6;
+    var elevationAngle = Math.PI / 5;
     var cosElev = Math.cos(elevationAngle);
     var sinElev = Math.sin(elevationAngle);
+
+    var gridCols = 14;
+    var gridRows = 10;
+    var totalBlocks = gridCols * gridRows;
 
     canvases.forEach(function(canvas) {
       var ctx = canvas.getContext("2d");
       var canvasWidth = canvas.width;
       var canvasHeight = canvas.height;
 
+      if (canvasWidth === 0 || canvasHeight === 0) return;
+
       ctx.clearRect(0, 0, canvasWidth, canvasHeight);
 
-      var gridCols = 14;
-      var gridRows = 10;
-      var totalBlocks = gridCols * gridRows;
-
-      var cubeSize = canvasWidth / (gridCols + 1);
-      var gap = cubeSize * 0.2;
+      var cubeSize = canvasWidth / (gridCols + 1.5);
+      var gap = cubeSize * 0.15;
       var actualSize = cubeSize - gap;
+      var depth = cubeSize * 0.5;
 
       var centerX = canvasWidth / 2;
-      var centerY = canvasHeight * 0.65;
+      var centerY = canvasHeight * 0.72;
 
       var maxDist = Math.sqrt((gridCols / 2) * (gridCols / 2) + (gridRows / 2) * (gridRows / 2)) * cubeSize;
 
@@ -5958,6 +5650,9 @@
       for (var row = 0; row < gridRows; row++) {
         for (var col = 0; col < gridCols; col++) {
           var idx = row * gridCols + col;
+          var block = visualizerBlocks[idx];
+          if (!block) continue;
+
           var freqIndex = Math.floor(idx * (freqLen / totalBlocks));
 
           var x = (col - gridCols / 2 + 0.5) * cubeSize;
@@ -5966,108 +5661,101 @@
           var distFromCenter = Math.sqrt(x * x + z * z);
 
           var edgeFalloff = 1;
-          if (distFromCenter > maxDist * 0.4) {
-            var t = (distFromCenter - maxDist * 0.4) / (maxDist * 0.6);
-            edgeFalloff = Math.cos(t * Math.PI / 2);
+          if (distFromCenter > maxDist * 0.55) {
+            edgeFalloff = 1 - (distFromCenter - maxDist * 0.55) / (maxDist * 0.45);
             edgeFalloff = Math.max(0, edgeFalloff);
           }
+          if (edgeFalloff < 0.03) continue;
 
-          if (edgeFalloff < 0.02) continue;
-
-          var freqValue;
-          if (freqIndex < freqLen * 0.12) {
-            freqValue = visualizerFrequencyData[freqIndex] || 0;
-          } else if (freqIndex < freqLen * 0.25) {
-            freqValue = visualizerFrequencyData[freqIndex] || 0;
-          } else if (freqIndex < freqLen * 0.45) {
-            freqValue = visualizerFrequencyData[freqIndex] || 0;
-          } else if (freqIndex < freqLen * 0.7) {
-            freqValue = visualizerFrequencyData[freqIndex] || 0;
+          var bandScale;
+          if (freqIndex < freqLen * 0.15) {
+            bandScale = lowScale;
+          } else if (freqIndex < freqLen * 0.30) {
+            bandScale = lowMidScale;
+          } else if (freqIndex < freqLen * 0.50) {
+            bandScale = midScale;
+          } else if (freqIndex < freqLen * 0.75) {
+            bandScale = highMidScale;
           } else {
-            freqValue = visualizerFrequencyData[freqIndex] || 0;
+            bandScale = highScale;
           }
 
-          var baseHeight = cubeSize * 0.6;
+          var baseHeight = cubeSize * 0.4;
+          var maxHeight = cubeSize * 4.5;
 
-          var dynamicHeight = 0;
-          if (freqIndex < freqLen * 0.12) {
-            dynamicHeight = lowScale * cubeSize * 3.5;
-          } else if (freqIndex < freqLen * 0.25) {
-            dynamicHeight = lowMidScale * cubeSize * 3;
-          } else if (freqIndex < freqLen * 0.45) {
-            dynamicHeight = midScale * cubeSize * 4;
-          } else if (freqIndex < freqLen * 0.7) {
-            dynamicHeight = highMidScale * cubeSize * 3.5;
+          var beatBoost = 1 + visualizerBeatEnergy * 0.5;
+          var dynamicHeight = bandScale * maxHeight * block.amplitudeBias * beatBoost;
+
+          var wave = Math.sin(distFromCenter * 0.012 - now * 0.0018 * block.speedBias + block.phaseBias);
+          var waveHeight = midScale * cubeSize * 1.8 * wave * block.amplitudeBias;
+
+          var energyBoost = 1 + frameEnergy * 0.3;
+          var targetHeight = (baseHeight + dynamicHeight + Math.abs(waveHeight)) * energyBoost;
+
+          if (visualizerMode === "idle") {
+            block.height = baseHeight * 0.45 * edgeFalloff;
+          } else if (visualizerMode === "paused") {
+            // Frozen: keep previous height, no velocity update
           } else {
-            dynamicHeight = highScale * cubeSize * 2.5;
+            block.velocity += (targetHeight - block.height) * 0.12;
+            block.velocity *= 0.72;
+            block.height += block.velocity;
+            block.height = Math.max(baseHeight * 0.3, Math.min(maxHeight * 1.2, block.height));
           }
-
-          var wave = Math.sin(distFromCenter * 0.015 - now * 0.0025) * 0.5 + 0.5;
-          var waveHeight = midScale * cubeSize * 2 * wave;
-
-          var targetHeight = baseHeight + dynamicHeight + waveHeight;
-
-          var block = visualizerBlocks[idx];
-          if (!block) {
-            block = { height: baseHeight, velocity: 0 };
-            visualizerBlocks[idx] = block;
-          }
-
-          block.velocity += (targetHeight - block.height) * 0.15;
-          block.velocity *= 0.7;
-          block.height += block.velocity;
-          block.height = Math.max(baseHeight * 0.5, Math.min(cubeSize * 5, block.height));
 
           var height = block.height * edgeFalloff;
 
           var heightFalloff = 1;
-          if (height > cubeSize * 2) {
-            var heightT = (height - cubeSize * 2) / (cubeSize * 3);
-            heightFalloff = Math.cos(heightT * Math.PI / 2);
-            heightFalloff = Math.max(0.2, heightFalloff);
+          if (height > maxHeight * 0.7) {
+            heightFalloff = 1 - (height - maxHeight * 0.7) / (maxHeight * 0.3);
+            heightFalloff = Math.max(0.25, heightFalloff);
           }
-
           height *= heightFalloff;
 
-          if (height < cubeSize * 0.3) continue;
+          if (height < cubeSize * 0.15) continue;
 
           var hue;
-          if (isPlaying) {
-            if (freqIndex < freqLen * 0.25) {
-              hue = 280 + highScale * 20;
-            } else if (freqIndex < freqLen * 0.5) {
-              hue = 320 + highScale * 30;
-            } else {
-              hue = 340 + highScale * 20;
-            }
+          var saturation;
+          var lightness;
+          if (freqIndex < freqLen * 0.30) {
+            hue = 330 + lowScale * 20;
+            saturation = 70 + lowScale * 15;
+            lightness = 72 + lowScale * 12;
+          } else if (freqIndex < freqLen * 0.60) {
+            hue = 310 + midScale * 25;
+            saturation = 68 + midScale * 18;
+            lightness = 74 + midScale * 10;
           } else {
-            if (freqIndex < freqLen * 0.25) {
-              hue = 240 + highScale * 10;
-            } else if (freqIndex < freqLen * 0.5) {
-              hue = 260 + highScale * 15;
-            } else {
-              hue = 280 + highScale * 10;
-            }
+            hue = 290 + highScale * 30;
+            saturation = 65 + highScale * 20;
+            lightness = 76 + highScale * 12;
           }
+
+          var warmHue = hue + (1 - emotionTemp) * 25;
+          var coolHue = hue - emotionTemp * 25;
+          var finalHue = emotionTemp > 0.5 ? coolHue : warmHue;
 
           var rx = x * cosView - z * sinView;
           var ry = -height * sinElev;
           var rz = x * sinView + z * cosView;
 
-          var perspective = 1 + rz / (canvasHeight * 2);
+          var perspective = 1 + rz / (canvasHeight * 2.5);
           var screenX = centerX + rx * perspective;
-          var screenY = centerY + ry * perspective - rz * cosElev * 0.4;
+          var screenY = centerY + ry * perspective - rz * cosElev * 0.35;
 
           cubes.push({
             x: screenX,
             y: screenY,
             size: actualSize * perspective * edgeFalloff,
             height: height * perspective,
+            depth: depth * perspective * edgeFalloff,
             z: rz,
-            hue: hue,
-            freqValue: freqValue,
+            hue: finalHue,
+            saturation: saturation,
+            lightness: lightness,
             edgeFalloff: edgeFalloff,
-            heightFalloff: heightFalloff
+            heightFalloff: heightFalloff,
+            beatPhase: visualizerBeatEnergy
           });
         }
       }
@@ -6081,45 +5769,47 @@
         var cy = cube.y;
         var cs = cube.size;
         var ch = cube.height;
+        var cd = cube.depth;
         var hue = cube.hue;
-        var edgeFalloff = cube.edgeFalloff;
+        var saturation = cube.saturation;
+        var lightness = cube.lightness;
+        var edge = cube.edgeFalloff;
+        var beatP = cube.beatPhase;
+
+        var alpha = 0.55 + edge * 0.45;
 
         ctx.save();
 
-        var alpha = 0.6 + edgeFalloff * 0.4;
-        var lightness = 70;
-        var saturation = 75;
-
-        var glowColor = "hsla(" + hue + ", " + saturation + "%, " + (lightness + 15) + "%, " + (alpha * 0.4) + ")";
+        var glowColor = "hsla(" + hue + ", " + (saturation + 5) + "%, " + (lightness + 15) + "%, " + (alpha * 0.35 * (1 + beatP * 0.5)) + ")";
         ctx.shadowColor = glowColor;
-        ctx.shadowBlur = cs * 0.8;
-        ctx.shadowOffsetY = cs * 0.2;
+        ctx.shadowBlur = cs * (0.6 + beatP * 0.8);
+        ctx.shadowOffsetY = cs * 0.15;
 
-        var depth = cs * 0.5;
+        var dScale = 0.55;
 
-        var rightGradient = ctx.createLinearGradient(
+        var rightGrad = ctx.createLinearGradient(
           cx + cs * 0.5, cy,
-          cx + cs * 0.5 + depth, cy - depth
+          cx + cs * 0.5 + cd * dScale, cy - cd * dScale
         );
-        rightGradient.addColorStop(0, "hsla(" + hue + ", " + (saturation - 10) + "%, " + (lightness - 20) + "%, " + (alpha * 0.5) + ")");
-        rightGradient.addColorStop(1, "hsla(" + hue + ", " + (saturation - 15) + "%, " + (lightness - 30) + "%, " + (alpha * 0.2) + ")");
-        ctx.fillStyle = rightGradient;
+        rightGrad.addColorStop(0, "hsla(" + hue + ", " + (saturation - 8) + "%, " + (lightness - 22) + "%, " + (alpha * 0.65) + ")");
+        rightGrad.addColorStop(1, "hsla(" + hue + ", " + (saturation - 12) + "%, " + (lightness - 32) + "%, " + (alpha * 0.3) + ")");
+        ctx.fillStyle = rightGrad;
         ctx.beginPath();
         ctx.moveTo(cx + cs * 0.5, cy);
-        ctx.lineTo(cx + cs * 0.5 + depth, cy - depth);
-        ctx.lineTo(cx + cs * 0.5 + depth, cy - depth + ch);
+        ctx.lineTo(cx + cs * 0.5 + cd * dScale, cy - cd * dScale);
+        ctx.lineTo(cx + cs * 0.5 + cd * dScale, cy - cd * dScale + ch);
         ctx.lineTo(cx + cs * 0.5, cy + ch);
         ctx.closePath();
         ctx.fill();
 
-        var frontGradient = ctx.createLinearGradient(
+        var frontGrad = ctx.createLinearGradient(
           cx - cs * 0.5, cy,
           cx - cs * 0.5, cy + ch
         );
-        frontGradient.addColorStop(0, "hsla(" + hue + ", " + saturation + "%, " + (lightness + 10) + "%, " + alpha + ")");
-        frontGradient.addColorStop(0.5, "hsla(" + hue + ", " + saturation + "%, " + lightness + "%, " + alpha + ")");
-        frontGradient.addColorStop(1, "hsla(" + hue + ", " + (saturation - 5) + "%, " + (lightness - 10) + "%, " + (alpha * 0.7) + ")");
-        ctx.fillStyle = frontGradient;
+        frontGrad.addColorStop(0, "hsla(" + hue + ", " + saturation + "%, " + (lightness + 12) + "%, " + alpha + ")");
+        frontGrad.addColorStop(0.45, "hsla(" + hue + ", " + saturation + "%, " + lightness + "%, " + (alpha * 0.97) + ")");
+        frontGrad.addColorStop(1, "hsla(" + hue + ", " + (saturation - 6) + "%, " + (lightness - 12) + "%, " + (alpha * 0.75) + ")");
+        ctx.fillStyle = frontGrad;
         ctx.beginPath();
         ctx.moveTo(cx - cs * 0.5, cy);
         ctx.lineTo(cx + cs * 0.5, cy);
@@ -6128,35 +5818,51 @@
         ctx.closePath();
         ctx.fill();
 
-        var topGradient = ctx.createLinearGradient(
+        var topGrad = ctx.createLinearGradient(
           cx - cs * 0.5, cy,
-          cx + cs * 0.5 + depth, cy - depth
+          cx + cs * 0.5 + cd * dScale, cy - cd * dScale
         );
-        topGradient.addColorStop(0, "hsla(" + hue + ", " + (saturation + 5) + "%, " + (lightness + 25) + "%, " + (alpha * 0.95) + ")");
-        topGradient.addColorStop(0.5, "hsla(" + hue + ", " + saturation + "%, " + (lightness + 15) + "%, " + (alpha * 0.9) + ")");
-        topGradient.addColorStop(1, "hsla(" + hue + ", " + (saturation - 5) + "%, " + lightness + "%, " + (alpha * 0.7) + ")");
-        ctx.fillStyle = topGradient;
+        topGrad.addColorStop(0, "hsla(" + hue + ", " + (saturation + 8) + "%, " + (lightness + 28) + "%, " + (alpha * 0.98) + ")");
+        topGrad.addColorStop(0.4, "hsla(" + hue + ", " + (saturation + 4) + "%, " + (lightness + 20) + "%, " + (alpha * 0.95) + ")");
+        topGrad.addColorStop(0.75, "hsla(" + hue + ", " + saturation + "%, " + (lightness + 8) + "%, " + (alpha * 0.88) + ")");
+        topGrad.addColorStop(1, "hsla(" + hue + ", " + (saturation - 4) + "%, " + (lightness - 4) + "%, " + (alpha * 0.65) + ")");
+        ctx.fillStyle = topGrad;
         ctx.beginPath();
         ctx.moveTo(cx - cs * 0.5, cy);
         ctx.lineTo(cx + cs * 0.5, cy);
-        ctx.lineTo(cx + cs * 0.5 + depth, cy - depth);
-        ctx.lineTo(cx - cs * 0.5 + depth, cy - depth);
+        ctx.lineTo(cx + cs * 0.5 + cd * dScale, cy - cd * dScale);
+        ctx.lineTo(cx - cs * 0.5 + cd * dScale, cy - cd * dScale);
         ctx.closePath();
         ctx.fill();
 
-        var highlightGradient = ctx.createLinearGradient(
-          cx - cs * 0.4, cy,
-          cx - cs * 0.4, cy + ch * 0.3
+        var hlGrad = ctx.createLinearGradient(
+          cx - cs * 0.42, cy,
+          cx - cs * 0.42, cy + ch * 0.35
         );
-        highlightGradient.addColorStop(0, "hsla(" + hue + ", " + (saturation + 10) + "%, " + (lightness + 40) + "%, " + (alpha * 0.8) + ")");
-        highlightGradient.addColorStop(0.5, "hsla(" + hue + ", " + saturation + "%, " + (lightness + 20) + "%, " + (alpha * 0.3) + ")");
-        highlightGradient.addColorStop(1, "transparent");
-        ctx.fillStyle = highlightGradient;
+        hlGrad.addColorStop(0, "hsla(" + hue + ", " + (saturation + 12) + "%, " + (lightness + 35) + "%, " + (alpha * 0.85) + ")");
+        hlGrad.addColorStop(0.6, "hsla(" + hue + ", " + (saturation + 6) + "%, " + (lightness + 18) + "%, " + (alpha * 0.4) + ")");
+        hlGrad.addColorStop(1, "transparent");
+        ctx.fillStyle = hlGrad;
         ctx.beginPath();
         ctx.moveTo(cx - cs * 0.5, cy);
-        ctx.lineTo(cx - cs * 0.5 + cs * 0.3, cy);
-        ctx.lineTo(cx - cs * 0.5 + cs * 0.3, cy + ch);
+        ctx.lineTo(cx - cs * 0.5 + cs * 0.28, cy);
+        ctx.lineTo(cx - cs * 0.5 + cs * 0.28, cy + ch);
         ctx.lineTo(cx - cs * 0.5, cy + ch);
+        ctx.closePath();
+        ctx.fill();
+
+        var edgeGrad = ctx.createLinearGradient(
+          cx + cs * 0.35, cy,
+          cx + cs * 0.5, cy + ch
+        );
+        edgeGrad.addColorStop(0, "transparent");
+        edgeGrad.addColorStop(1, "hsla(" + hue + ", " + (saturation - 10) + "%, " + (lightness - 20) + "%, " + (alpha * 0.25) + ")");
+        ctx.fillStyle = edgeGrad;
+        ctx.beginPath();
+        ctx.moveTo(cx + cs * 0.35, cy);
+        ctx.lineTo(cx + cs * 0.5, cy);
+        ctx.lineTo(cx + cs * 0.5, cy + ch);
+        ctx.lineTo(cx + cs * 0.35, cy + ch);
         ctx.closePath();
         ctx.fill();
 
@@ -6178,26 +5884,34 @@
     return a + (b - a) * t;
   }
 
-  audio.addEventListener("play", function() {
-    if (activeModule !== "radio") {
-      startVisualizer();
-    }
-  });
-
-  audio.addEventListener("pause", function() {
-  });
-
-  audio.addEventListener("ended", function() {
-    stopVisualizer();
-  });
-
   function updateVisualizerForModule(module) {
     if (module === "radio") {
       stopVisualizer();
-    } else {
-      if (!isVisualizerActive && audioVisualizerContext && audioAnalyser) {
-        startVisualizer();
+    } else if (module === "bluetooth") {
+      if (visualizerMode === "idle") {
+        stopVisualizer();
       }
+      if (!audio.paused) {
+        startVisualizer();
+      } else {
+        var canvases = document.querySelectorAll(".module-panel.is-active .audio-visualizer");
+        canvases.forEach(function(canvas) {
+          canvas.classList.add("is-active");
+        });
+        visualizerCachedCanvases = canvases;
+        if (visualizerMode === "stopped") {
+          visualizerMode = "paused";
+          visualize();
+        }
+      }
+    } else if (module === "usb") {
+      if (!audio.paused && activeAudioSource === "usb") {
+        startVisualizer();
+      } else {
+        startIdleVisualizer();
+      }
+    } else {
+      stopVisualizer();
     }
   }
 
@@ -6230,38 +5944,38 @@
       rememberUsbResumePoint();
       return;
     }
-
-    var safeDuration = Number.isFinite(audio.duration) ? audio.duration : 100;
-    if (progress.max !== safeDuration) {
-      progress.max = safeDuration;
-    }
-
-    var currentTime = audio.currentTime || 0;
-    if (progress.value !== currentTime) {
-      progress.value = currentTime;
-      currentTimeEl.textContent = formatTime(currentTime);
-      updateRangeFill(progress);
-    }
-
-    scheduleLocalResumeSave();
   }
 
   audio.addEventListener("play", function() {
     startProgressUpdate();
     if (activeModule !== "radio") {
-      startVisualizer();
+      if (visualizerMode === "idle") {
+        startVisualizer();
+      } else if (visualizerMode === "paused") {
+        visualizerMode = "playing";
+      } else {
+        startVisualizer();
+      }
     }
-    updatePlayState();
   });
 
   audio.addEventListener("pause", function() {
     stopProgressUpdate();
-    updatePlayState();
+    if (visualizerMode === "playing") {
+      pauseVisualizer();
+    }
   });
 
   audio.addEventListener("ended", function() {
     stopProgressUpdate();
-    stopVisualizer();
+    if (activeModule === "usb") {
+      var willAutoAdvance = usbPlaylist.length > 1 && usbPlayMode !== "single";
+      if (!willAutoAdvance) {
+        startIdleVisualizer();
+      }
+    } else if (activeModule === "bluetooth") {
+      stopVisualizer();
+    }
   });
 
   document.addEventListener("visibilitychange", function () {
@@ -6275,13 +5989,15 @@
       if (!audio.paused) {
         startProgressUpdate();
         if (activeModule !== "radio") {
-          startVisualizer();
+          if (visualizerMode === "idle" || visualizerMode === "paused") {
+            startVisualizer();
+          } else {
+            startVisualizer();
+          }
         }
       }
-      maybeResumeLocalPlayback("visible");
       maybeResumeBluetoothOnReturn("visible");
     } else {
-      rememberLocalResumePoint();
       rememberBluetoothResumePoint({ shouldResume: activeModule === "bluetooth" && isBtPlaying, wasPlaying: isBtPlaying });
       if (window.MusicBridge && typeof window.MusicBridge.onBackgroundEnter === "function") {
         try {
@@ -6294,17 +6010,7 @@
   });
 
   document.addEventListener("pagehide", function() {
-    rememberLocalResumePoint();
     rememberBluetoothResumePoint({ shouldResume: activeModule === "bluetooth" && isBtPlaying, wasPlaying: isBtPlaying });
-    rememberUsbResumePoint();
-    savePlaylistMetadata();
-  });
-
-  window.addEventListener("beforeunload", function(event) {
-    rememberLocalResumePoint();
-    rememberBluetoothResumePoint({ shouldResume: activeModule === "bluetooth" && isBtPlaying, wasPlaying: isBtPlaying });
-    rememberUsbResumePoint();
-    savePlaylistMetadata();
   });
 
   document.addEventListener("pageshow", function() {
@@ -6313,10 +6019,179 @@
       if (activeModule !== "radio") {
         startVisualizer();
       }
+    } else if (activeModule === "usb" || activeModule === "bluetooth") {
+      if (visualizerMode === "stopped" || visualizerMode === "paused") {
+        startIdleVisualizer();
+      }
     }
-    maybeResumeLocalPlayback("visible");
     maybeResumeBluetoothOnReturn("visible");
   });
+
+  function togglePlaylistBatchSelect(id) {
+    if (playlistBatchSelected[id]) {
+      delete playlistBatchSelected[id];
+    } else {
+      playlistBatchSelected[id] = true;
+    }
+    if (activeModule === "usb") {
+      renderUsbPlaylist();
+    } else {
+      renderPlaylist();
+    }
+  }
+
+  function toggleFavoriteBatchSelect(id) {
+    if (favoriteBatchSelected[id]) {
+      delete favoriteBatchSelected[id];
+    } else {
+      favoriteBatchSelected[id] = true;
+    }
+    renderFavorites();
+  }
+
+  function togglePlaylistSelectAll() {
+    if (activeModule === "usb") {
+      if (Object.keys(playlistBatchSelected).length >= usbPlaylist.length) {
+        playlistBatchSelected = {};
+      } else {
+        playlistBatchSelected = {};
+        usbPlaylist.forEach(function(t) { playlistBatchSelected[t.id] = true; });
+      }
+      renderUsbPlaylist();
+    } else {
+      if (Object.keys(playlistBatchSelected).length >= playlist.length) {
+        playlistBatchSelected = {};
+      } else {
+        playlistBatchSelected = {};
+        playlist.forEach(function(t) { playlistBatchSelected[t.id] = true; });
+      }
+      renderPlaylist();
+    }
+  }
+
+  function toggleFavoriteSelectAll() {
+    var usbFavs = usbPlaylist.filter(function(t) { return isUsbTrackFavorite(t); });
+    if (Object.keys(favoriteBatchSelected).length >= usbFavs.length) {
+      favoriteBatchSelected = {};
+    } else {
+      favoriteBatchSelected = {};
+      usbFavs.forEach(function(t) { favoriteBatchSelected[t.id] = true; });
+    }
+    renderFavorites();
+  }
+
+  function updatePlaylistBatchBar() {
+    if (!playlistBatchBar) return;
+    var count = Object.keys(playlistBatchSelected).length;
+    var total = activeModule === "usb" ? usbPlaylist.length : playlist.length;
+    var selectAllBtn = playlistSelectAllBtn;
+    var selectLabel = playlistSelectLabel;
+    var removeBtn = playlistBatchDeleteBtn;
+    if (selectAllBtn) {
+      if (count > 0 && count >= total) {
+        selectAllBtn.classList.add("is-checked");
+      } else {
+        selectAllBtn.classList.remove("is-checked");
+      }
+    }
+    if (selectLabel) {
+      selectLabel.textContent = "全选";
+    }
+    if (removeBtn) {
+      removeBtn.disabled = count === 0;
+    }
+  }
+
+  function updateFavoriteBatchBar() {
+    if (!favoriteBatchBar) return;
+    var usbFavs = usbPlaylist.filter(function(t) { return isUsbTrackFavorite(t); });
+    var count = Object.keys(favoriteBatchSelected).length;
+    var selectAllBtn = favoriteSelectAllBtn;
+    var selectLabel = favoriteSelectLabel;
+    var removeBtn = favoriteBatchDeleteBtn;
+    if (selectAllBtn) {
+      if (count > 0 && count >= usbFavs.length) {
+        selectAllBtn.classList.add("is-checked");
+      } else {
+        selectAllBtn.classList.remove("is-checked");
+      }
+    }
+    if (selectLabel) {
+      selectLabel.textContent = "全选";
+    }
+    if (removeBtn) {
+      removeBtn.disabled = count === 0;
+    }
+  }
+
+  function confirmDeleteTrack(id, type) {
+    var trackName = "";
+    if (type === "favorite") {
+      var favTrack = usbPlaylist.find(function(t) { return t.id === id; });
+      trackName = favTrack ? favTrack.title : "";
+    } else if (activeModule === "usb") {
+      var usbTrack = usbPlaylist.find(function(t) { return t.id === id; });
+      trackName = usbTrack ? usbTrack.title : "";
+    } else {
+      var plTrack = playlist.find(function(t) { return t.id === id; });
+      trackName = plTrack ? plTrack.title : "";
+    }
+    var msg = trackName ? '确定要移除"' + trackName + '"吗？' : "确定要移除这首歌吗？";
+    showConfirmDialog(msg, function () {
+        if (type === "favorite") {
+            removeFavoriteById(id);
+        } else if (activeModule === "usb") {
+            removeUsbTrackById(id);
+        } else {
+            removeTrack(id);
+        }
+    });
+  }
+
+  function confirmDeleteBatch(type) {
+    var selected = type === "favorite" ? favoriteBatchSelected : playlistBatchSelected;
+    var ids = Object.keys(selected);
+    if (!ids.length) return;
+    var count = ids.length;
+    showConfirmDialog("确定要移除" + count + "首歌吗？", function () {
+        ids.forEach(function (id) {
+            if (type === "favorite") {
+                removeFavoriteById(id);
+            } else if (activeModule === "usb") {
+                removeUsbTrackById(id);
+            } else {
+                removeTrack(id);
+            }
+        });
+        if (type === "favorite") {
+            favoriteBatchSelected = {};
+            renderFavorites();
+        } else {
+            playlistBatchSelected = {};
+            if (activeModule === "usb") {
+                renderUsbPlaylist();
+            } else {
+                renderPlaylist();
+            }
+        }
+    });
+  }
+
+  function showConfirmDialog(message, onConfirm) {
+    if (!confirmDialog) return;
+    confirmMessage.textContent = message;
+    confirmDialog.hidden = false;
+    confirmDialog.classList.add("is-visible");
+    pendingConfirmAction = onConfirm;
+  }
+
+  function hideConfirmDialog() {
+    if (!confirmDialog) return;
+    confirmDialog.hidden = true;
+    confirmDialog.classList.remove("is-visible");
+    pendingConfirmAction = null;
+  }
+
 })();
 
 
