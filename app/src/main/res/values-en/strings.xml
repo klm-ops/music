@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- App name -->
+    <string name="app_name">Music</string>
+
+    <!-- Playback service notification channel -->
+    <string name="playback_channel_name">Music Playback</string>
+    <string name="playback_channel_desc">Local music background playback control</string>
+
+    <!-- USB device status notification channel -->
+    <string name="usb_channel_name">USB Device Status</string>
+    <string name="usb_channel_desc">USB device connection status notification</string>
+
+    <!-- Notification action button labels -->
+    <string name="notification_previous">Previous</string>
+    <string name="notification_play">Play</string>
+    <string name="notification_pause">Pause</string>
+    <string name="notification_next">Next</string>
+
+    <!-- Default playback info -->
+    <string name="default_title">Music</string>
+    <string name="default_artist">Local Music</string>
+    <string name="usb_artist">USB Music</string>
+
+    <!-- USB disconnected notification -->
+    <string name="usb_disconnected_title">USB Device Disconnected</string>
+    <string name="usb_disconnected_text">USB device disconnected, music playback stopped</string>
+
+    <!-- USB status messages -->
+    <string name="usb_msg_connected">USB device connected</string>
+    <string name="usb_msg_disconnected">USB device disconnected</string>
+    <string name="usb_msg_reading">USB reading</string>
+    <string name="usb_msg_scan_complete">USB music scan complete</string>
+    <string name="usb_msg_no_music">No music files on USB device</string>
+    <string name="usb_msg_not_connected">USB device not connected</string>
+    <string name="usb_msg_scanning">USB reading</string>
+    <string name="usb_msg_cannot_identify">Unable to recognize this device</string>
+    <string name="usb_root_dir_name">Root directory</string>
+
+    <!-- Bluetooth error messages (returned to WebView as hints) -->
+    <string name="bt_err_device_invalid">Invalid device address</string>
+    <string name="bt_err_not_enabled">Bluetooth not enabled. Please enable in system settings first</string>
+    <string name="bt_err_no_permission">Missing Bluetooth connection permission</string>
+    <string name="bt_err_status_cleared">Error state cleared</string>
+    <string name="bt_err_reconnect_cancelled">Auto-reconnect cancelled</string>
+    <string name="bt_err_status_detail_failed">Failed to get status details</string>
+    <string name="bt_err_device_ref_invalid">Device reference invalidated</string>
+    <string name="bt_err_reboot">Please restart app or reset Bluetooth</string>
+    <string name="bt_err_audio_disconnected">Bluetooth audio device disconnected</string>
+    <string name="bt_err_audio_link_disconnected">Audio link disconnected</string>
+    <string name="bt_err_status_check_disconnected">Connection status check found disconnect</string>
+    <string name="bt_err_retry_hint">Please move closer to the Bluetooth device and retry connection</string>
+    <string name="bt_err_grant_permission">Please grant Bluetooth connection permission in system settings, then reopen the app</string>
+    <string name="bt_err_confirm_bluetooth">Please confirm Bluetooth is enabled and the device is in range, then retry connection</string>
+    <string name="bt_err_complete_pairing">Please complete pairing in system Bluetooth settings, then return to retry</string>
+    <string name="bt_err_enable_first">Please enable Bluetooth on your phone and ensure the device is paired first</string>
+    <string name="bt_err_reconnect_hint">Bluetooth disconnected, auto-reconnecting. Please manually reconnect if it fails multiple times</string>
+    <string name="bt_err_restart_app">Please restart the app to reinitialize Bluetooth device reference</string>
+    <string name="bt_err_unknown_cmd">Unknown Bluetooth media control command</string>
+    <string name="bt_err_sent_cmd">Bluetooth media command sent</string>
+    <string name="bt_err_status_failed">Status generation failed</string>
+
+    <!-- Car vendor extension permission description -->
+    <string name="permission_car_vendor_extension_label">Car Vendor Extension Permission</string>
+</resources>

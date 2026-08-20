@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 應用名稱 -->
+    <string name="app_name">音樂</string>
+
+    <!-- 播放服務通知渠道 -->
+    <string name="playback_channel_name">音樂播放</string>
+    <string name="playback_channel_desc">本地音樂背景播放控制</string>
+
+    <!-- USB裝置狀態通知渠道 -->
+    <string name="usb_channel_name">USB裝置狀態</string>
+    <string name="usb_channel_desc">USB裝置連接狀態通知</string>
+
+    <!-- 通知操作按鈕文字 -->
+    <string name="notification_previous">上一曲</string>
+    <string name="notification_play">播放</string>
+    <string name="notification_pause">暫停</string>
+    <string name="notification_next">下一曲</string>
+
+    <!-- 預設播放資訊 -->
+    <string name="default_title">音樂</string>
+    <string name="default_artist">本地音樂</string>
+    <string name="usb_artist">USB音樂</string>
+
+    <!-- USB斷開通知 -->
+    <string name="usb_disconnected_title">USB裝置已斷開</string>
+    <string name="usb_disconnected_text">USB裝置已斷開，音樂播放已停止</string>
+
+    <!-- USB狀態訊息 -->
+    <string name="usb_msg_connected">USB裝置已連接</string>
+    <string name="usb_msg_disconnected">USB裝置已斷開</string>
+    <string name="usb_msg_reading">USB讀取中</string>
+    <string name="usb_msg_scan_complete">USB音樂掃描完成</string>
+    <string name="usb_msg_no_music">USB裝置中無音樂檔案</string>
+    <string name="usb_msg_not_connected">USB裝置未連接</string>
+    <string name="usb_msg_scanning">USB讀取中</string>
+    <string name="usb_msg_cannot_identify">無法識別此裝置</string>
+    <string name="usb_root_dir_name">根目錄</string>
+
+    <!-- 藍牙錯誤訊息（用於返回給WebView的提示） -->
+    <string name="bt_err_device_invalid">裝置位址無效</string>
+    <string name="bt_err_not_enabled">藍牙未開啟，請先在系統設定中開啟藍牙</string>
+    <string name="bt_err_no_permission">缺少藍牙連接權限</string>
+    <string name="bt_err_status_cleared">錯誤狀態已清除</string>
+    <string name="bt_err_reconnect_cancelled">已取消自動重連</string>
+    <string name="bt_err_status_detail_failed">狀態詳細資訊取得失敗</string>
+    <string name="bt_err_device_ref_invalid">裝置引用已失效</string>
+    <string name="bt_err_reboot">請重新啟動應用或重置藍牙</string>
+    <string name="bt_err_audio_disconnected">藍牙音樂裝置已斷開</string>
+    <string name="bt_err_audio_link_disconnected">音訊鏈路斷開</string>
+    <string name="bt_err_status_check_disconnected">連接狀態檢查發現斷開</string>
+    <string name="bt_err_retry_hint">請靠近藍牙裝置後重試連接</string>
+    <string name="bt_err_grant_permission">請在系統設定中授予藍牙連接權限，然後重新開啟應用</string>
+    <string name="bt_err_confirm_bluetooth">請確認裝置已開啟藍牙且在有效範圍內，然後重試連接</string>
+    <string name="bt_err_complete_pairing">請在系統藍牙設定中完成裝置配對，然後返回應用重試</string>
+    <string name="bt_err_enable_first">請先開啟手機藍牙並確保裝置已配對</string>
+    <string name="bt_err_reconnect_hint">藍牙連接已斷開，系統將嘗試自動重連，若多次失敗請手動重新連接</string>
+    <string name="bt_err_restart_app">請重啟應用以重新初始化藍牙裝置引用</string>
+    <string name="bt_err_unknown_cmd">未知藍牙媒體控制指令</string>
+    <string name="bt_err_sent_cmd">已發送藍牙媒體控制指令</string>
+    <string name="bt_err_status_failed">狀態生成失敗</string>
+</resources>

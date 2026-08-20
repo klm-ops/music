@@ -2,6 +2,7 @@ package com.app.music;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
+import android.app.ActivityOptions;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.bluetooth.BluetoothA2dp;
@@ -15,8 +16,11 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.graphics.PixelFormat;
+import android.graphics.Rect;
 import android.graphics.drawable.GradientDrawable;
 import android.hardware.usb.UsbManager;
 import android.media.AudioDeviceInfo;
@@ -29,9 +33,14 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.Environment;
+import android.os.storage.StorageManager;
+import android.os.storage.StorageVolume;
 import android.provider.Settings;
 import android.telephony.PhoneStateListener;
 import android.telephony.TelephonyManager;
+import android.util.Log;
+import android.util.Base64;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.KeyEvent;
@@ -62,7 +71,9 @@ import androidx.core.view.WindowInsetsControllerCompat;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.lang.reflect.Method;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -71,160 +82,195 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 
+/**
+ * 音乐播放器主Activity
+ * 核心功能：通过WebView加载Web音乐播放器页面，实现本地音乐播放、
+ * 蓝牙音频设备连接（A2DP输出/A2DP Sink接收）、USB音乐扫描播放、
+ * JS-Native桥接通信、电话状态监听等功能。
+ */
 public class MainActivity extends AppCompatActivity {
-    private static final String PLAYER_URL = "file:///android_asset/player/index.html";
-    private static final String USB_NOTIFICATION_CHANNEL_ID = "usb_device_status";
-    private static final int USB_DISCONNECTED_NOTIFICATION_ID = 9001;
-    private static final int PROFILE_A2DP_SINK = 11;
-    private static final int PROFILE_AVRCP_CONTROLLER = 12;
-    private static final int AVRCP_PASS_THROUGH_STATE_PRESS = 0;
-    private static final int AVRCP_PASS_THROUGH_STATE_RELEASE = 1;
-    private static final int AVRCP_CMD_ID_REWIND = 0x48;
-    private static final int AVRCP_CMD_ID_FAST_FORWARD = 0x49;
-    private static final int AVRCP_CMD_ID_FORWARD = 0x4B;
-    private static final int AVRCP_CMD_ID_BACKWARD = 0x4C;
-    private static final int AVRCP_CMD_ID_PLAY = 0x44;
-    private static final int AVRCP_CMD_ID_PAUSE = 0x46;
-    private static final int A2DP_SINK_STATE_PLAYING = 10;
-    private static final int A2DP_SINK_STATE_NOT_PLAYING = 11;
-    private static final int DEFAULT_STATUS_BAR_TOP_PX = 24;
+    private static final String TAG = "MusicPlayback";
+    private static final String PLAYER_URL = "file:///android_asset/player/index.html"; // Web播放器本地资源地址
+    private static final String USB_NOTIFICATION_CHANNEL_ID = "usb_device_status"; // USB通知渠道ID
+    private static final int USB_DISCONNECTED_NOTIFICATION_ID = 9001; // USB断开通知ID
+    private static final int PROFILE_A2DP_SINK = 11; // 蓝牙A2DP Sink Profile常量
+    private static final int PROFILE_AVRCP_CONTROLLER = 12; // 蓝牙AVRCP Controller Profile常量
+    private static final int AVRCP_PASS_THROUGH_STATE_PRESS = 0; // AVRCP按键按下状态
+    private static final int AVRCP_PASS_THROUGH_STATE_RELEASE = 1; // AVRCP按键释放状态
+    private static final int AVRCP_CMD_ID_REWIND = 0x48; // AVRCP后退命令ID
+    private static final int AVRCP_CMD_ID_FAST_FORWARD = 0x49; // AVRCP快进命令ID
+    private static final int AVRCP_CMD_ID_FORWARD = 0x4B; // AVRCP下一曲命令ID
+    private static final int AVRCP_CMD_ID_BACKWARD = 0x4C; // AVRCP上一曲命令ID
+    private static final int AVRCP_CMD_ID_PLAY = 0x44; // AVRCP播放命令ID
+    private static final int AVRCP_CMD_ID_PAUSE = 0x46; // AVRCP暂停命令ID
+    private static final int A2DP_SINK_STATE_PLAYING = 10; // A2DP Sink播放中状态
+    private static final int A2DP_SINK_STATE_NOT_PLAYING = 11; // A2DP Sink未播放状态
+    private static final int DEFAULT_STATUS_BAR_TOP_PX = 24; // 默认状态栏顶部像素值
+    // 蓝牙A2DP Sink连接状态变化广播Action
     private static final String ACTION_A2DP_SINK_CONNECTION_STATE_CHANGED =
             "android.bluetooth.a2dp-sink.profile.action.CONNECTION_STATE_CHANGED";
+    // 蓝牙A2DP Sink播放状态变化广播Action
     private static final String ACTION_A2DP_SINK_PLAYING_STATE_CHANGED =
             "android.bluetooth.a2dp-sink.profile.action.PLAYING_STATE_CHANGED";
+    // 蓝牙AVRCP Controller播放状态变化广播Action
     private static final String ACTION_AVRCP_CONTROLLER_PLAYBACK_STATE_CHANGED =
             "android.bluetooth.avrcp-controller.profile.action.PLAYBACK_STATE_CHANGED";
+    // 蓝牙AVRCP Controller曲目事件广播Action
     private static final String ACTION_AVRCP_CONTROLLER_TRACK_EVENT =
             "android.bluetooth.avrcp-controller.profile.action.TRACK_EVENT";
+    // AVRCP Controller播放状态Extra键
     private static final String EXTRA_AVRCP_CONTROLLER_PLAYBACK =
             "android.bluetooth.avrcp-controller.profile.extra.PLAYBACK";
+    // AVRCP Controller元数据Extra键
     private static final String EXTRA_AVRCP_CONTROLLER_METADATA =
             "android.bluetooth.avrcp-controller.profile.extra.METADATA";
+    // 蓝牙AVRCP播放状态变化广播Action（旧版）
     private static final String ACTION_AVRCP_PLAYBACK_STATE_CHANGED =
             "android.bluetooth.avrcp.profile.action.PLAYBACK_STATE_CHANGED";
+    // 蓝牙AVRCP曲目事件广播Action（旧版）
     private static final String ACTION_AVRCP_TRACK_EVENT =
             "android.bluetooth.avrcp.profile.action.TRACK_EVENT";
+    // 系统音量变化广播Action
     private static final String ACTION_VOLUME_CHANGED =
             "android.media.VOLUME_CHANGED_ACTION";
-    private static final long USB_MIN_AUDIO_FILE_BYTES = 100L * 1024L;
-    private static final long BLUETOOTH_FAST_CONNECT_TIMEOUT_MS = 3000L;
-    private static final long BLUETOOTH_CONNECT_CONFIRM_TIMEOUT_MS = 12000L;
-    private static final long BLUETOOTH_FAST_CONNECT_RETRY_MS = 500L;
-    private static final long BLUETOOTH_AUTO_RECONNECT_DELAY_MS = 2000L;
-    private static final int BLUETOOTH_AUTO_RECONNECT_MAX_ATTEMPTS = 8;
-    private static final long BLUETOOTH_STABLE_SESSION_TARGET_MS = 2L * 60L * 60L * 1000L;
-    private static final int BLUETOOTH_CONNECT_SAMPLE_LIMIT = 60;
-    private static final long BLUETOOTH_DISCOVERY_MIN_DURATION_MS = 8000L;
-    private static final long BLUETOOTH_DISCOVERY_MAX_DURATION_MS = 15000L;
-    private static final long BLUETOOTH_DEVICE_EXPIRY_MS = 60000L;
-    private static final long BLUETOOTH_CONNECTION_STATUS_CHECK_INTERVAL_MS = 3000L;
-    private static final String BT_STATE_IDLE = "idle";
-    private static final String BT_STATE_DISCOVERING = "discovering";
-    private static final String BT_STATE_CONNECTING = "connecting";
-    private static final String BT_STATE_CONNECTED = "connected";
-    private static final String BT_STATE_PLAYING = "playing";
-    private static final String BT_STATE_PAUSED = "paused";
-    private static final String BT_STATE_DISCONNECTED = "disconnected";
-    private static final String BT_STATE_ERROR = "error";
-    private static final long BLUETOOTH_RECONNECT_BACKOFF_BASE_MS = 1000L;
-    private static final String[] USB_AUDIO_EXTENSIONS = {
+    private static final long USB_MIN_AUDIO_FILE_BYTES = 100L * 1024L; // USB音频文件最小大小（100KB）
+    private static final long BLUETOOTH_FAST_CONNECT_TIMEOUT_MS = 3000L; // 蓝牙快速连接超时（3秒）
+    private static final long BLUETOOTH_CONNECT_CONFIRM_TIMEOUT_MS = 12000L; // 蓝牙连接确认超时（12秒）
+    private static final long BLUETOOTH_FAST_CONNECT_RETRY_MS = 500L; // 蓝牙快速连接重试间隔（500ms）
+    private static final long BLUETOOTH_AUTO_RECONNECT_DELAY_MS = 2000L; // 蓝牙自动重连基础延迟（2秒）
+    private static final int BLUETOOTH_AUTO_RECONNECT_MAX_ATTEMPTS = 8; // 蓝牙自动重连最大次数
+    private static final long BLUETOOTH_STABLE_SESSION_TARGET_MS = 2L * 60L * 60L * 1000L; // 蓝牙稳定会话目标时长（2小时）
+    private static final int BLUETOOTH_CONNECT_SAMPLE_LIMIT = 60; // 蓝牙连接采样记录上限
+    private static final long BLUETOOTH_DISCOVERY_MIN_DURATION_MS = 8000L; // 蓝牙搜索最短时长（8秒）
+    private static final long BLUETOOTH_DISCOVERY_MAX_DURATION_MS = 15000L; // 蓝牙搜索最长时长（15秒）
+    private static final long BLUETOOTH_DEVICE_EXPIRY_MS = 60000L; // 蓝牙设备过期时间（60秒）
+    private static final long BLUETOOTH_CONNECTION_STATUS_CHECK_INTERVAL_MS = 3000L; // 蓝牙连接状态检查间隔（3秒）
+    private static final String BT_STATE_IDLE = "idle"; // 蓝牙状态机：空闲
+    private static final String BT_STATE_DISCOVERING = "discovering"; // 蓝牙状态机：搜索中
+    private static final String BT_STATE_CONNECTING = "connecting"; // 蓝牙状态机：连接中
+    private static final String BT_STATE_CONNECTED = "connected"; // 蓝牙状态机：已连接
+    private static final String BT_STATE_PLAYING = "playing"; // 蓝牙状态机：播放中
+    private static final String BT_STATE_PAUSED = "paused"; // 蓝牙状态机：已暂停
+    private static final String BT_STATE_DISCONNECTED = "disconnected"; // 蓝牙状态机：已断开
+    private static final String BT_STATE_ERROR = "error"; // 蓝牙状态机：错误
+    private static final long BLUETOOTH_RECONNECT_BACKOFF_BASE_MS = 1000L; // 蓝牙重连退避基础时间（1秒）
+    private static final int BLUETOOTH_COVER_MAX_EDGE_PX = 512; // 蓝牙专辑封面最大边长（像素，超过则等比缩放）
+    private static final int BLUETOOTH_COVER_JPEG_QUALITY = 90; // 蓝牙专辑封面JPEG压缩质量（0-100）
+    private static final String[] USB_AUDIO_EXTENSIONS = { // 支持的USB音频文件扩展名列表
             ".aac", ".mp3", ".flac", ".ape", ".wav", ".wma", ".ogg", ".mpeg", ".mpg", ".mp2", ".mp1",
             ".m4a", ".m4b", ".opus", ".aiff", ".aif", ".dsf", ".dff", ".wv", ".tta", ".tak", ".mid", ".midi"
     };
-    private static final long USB_SCAN_PROGRESS_INTERVAL_MS = 200L;
-    private static final String USB_FAVORITES_SYNC_DIR = "usb_favorites";
-    private static final String USB_FAVORITES_INDEX_FILE = "favorites_index.json";
+    private static final int USB_COVER_MAX_EDGE_PX = 512; // USB专辑封面最大边长（像素，超过则采样压缩）
+    private static final int USB_COVER_JPEG_QUALITY = 85; // USB专辑封面JPEG压缩质量（0-100）
+    private static final long USB_SCAN_PROGRESS_INTERVAL_MS = 200L; // USB扫描进度上报间隔（200ms）
+    private static final String USB_FAVORITES_SYNC_DIR = "usb_favorites"; // USB收藏同步目录名
+    private static final String USB_FAVORITES_INDEX_FILE = "favorites_index.json"; // USB收藏索引文件名
+    private static final long VHAL_KEY_POLL_INTERVAL_MS = 200L; // VHAL物理按键信号轮询间隔（200ms）
 
+    // WebView控件，用于加载Web音乐播放器页面
     private WebView musicWebView;
-    @Nullable
+    @Nullable // 文件选择回调，用于处理Web端文件选择请求
     private ValueCallback<Uri[]> filePathCallback;
-    @Nullable
+    @Nullable // 地理权限请求回调
     private GeolocationPermissions.Callback pendingGeolocationCallback;
-    @Nullable
+    @Nullable // 地理权限请求来源地址
     private String pendingGeolocationOrigin;
-    @Nullable
+    @Nullable // 蓝牙适配器
     private BluetoothAdapter bluetoothAdapter;
-    @Nullable
+    @Nullable // 蓝牙A2DP Profile代理（作为音频输出源）
     private BluetoothA2dp bluetoothA2dp;
-    @Nullable
+    @Nullable // 蓝牙A2DP Sink Profile代理（作为音频接收端）
     private BluetoothProfile bluetoothA2dpSink;
-    @Nullable
+    @Nullable // 蓝牙AVRCP Controller Profile代理（用于媒体控制）
     private BluetoothProfile bluetoothAvrcpController;
-    private final Map<String, BluetoothDevice> knownBluetoothDevices = new LinkedHashMap<>();
-    private final Map<String, String> bluetoothDeviceNames = new LinkedHashMap<>();
-    private final Map<String, Integer> bluetoothDeviceRssi = new LinkedHashMap<>();
-    private final Map<String, Long> bluetoothDeviceLastSeen = new LinkedHashMap<>();
-    private final Handler bluetoothHandler = new Handler(Looper.getMainLooper());
-    private boolean bluetoothReceiverRegistered = false;
-    private String activeAudioModule = "local";
-    private String pendingBluetoothConnectAddress = "";
-    private String confirmedBluetoothAudioAddress = "";
-    private String requestedBluetoothControlAddress = "";
-    private long bluetoothRemoteProgressMs = -1L;
-    private long bluetoothRemoteDurationMs = -1L;
-    private long bluetoothRemoteProgressUpdatedAtMs = 0L;
-    private boolean bluetoothRemotePlayingKnown = false;
-    private boolean bluetoothRemotePlaying = false;
-    private String bluetoothRemoteTitle = "";
-    private String bluetoothRemoteArtist = "";
-    private String bluetoothRemoteAlbum = "";
-    private int statusBarTopPx = DEFAULT_STATUS_BAR_TOP_PX;
-    private boolean statusBarLightBackground = false;
-    private boolean playbackControlReceiverRegistered = false;
-    private boolean usbReceiverRegistered = false;
-    private volatile boolean usbScanning = false;
-    private volatile String usbMusicStateJson = "{\"connected\":false,\"scanning\":false,\"message\":\"USB设备未连接\",\"folders\":[],\"tracks\":[]}";
-    private int usbScanToken = 0;
-    private final Map<String, JSONObject> persistedUsbFavorites = new LinkedHashMap<>();
-    private volatile boolean favoritesLoaded = false;
-    private boolean localPlaybackPlaying = false;
-    private String localPlaybackTitle = "三一音乐";
-    private String localPlaybackArtist = "本地音乐";
-    private int pendingBluetoothConnectAttempts = 0;
-    private long pendingBluetoothConnectStartedAtMs = 0L;
-    private long lastBluetoothConnectDurationMs = -1L;
-    private long confirmedBluetoothConnectedAtMs = 0L;
-    private int bluetoothConnectSuccessCount = 0;
-    private int bluetoothConnectFailureCount = 0;
-    private int bluetoothDisconnectCount = 0;
-    private long bluetoothTotalConnectedDurationMs = 0L;
-    private String lastBluetoothConnectAddress = "";
-    private String lastBluetoothConnectResult = "idle";
-    private String bluetoothAutoReconnectAddress = "";
-    private int bluetoothAutoReconnectAttempts = 0;
-    private boolean userInitiatedBluetoothDisconnect = false;
-    private boolean pendingBluetoothDiscoveryAfterPermission = false;
-    private boolean bluetoothDiscoveryPending = false;
-    private long bluetoothDiscoveryStartedAtMs = 0L;
-    private boolean bluetoothScanningForAudioDevicesOnly = true;
-    private String bluetoothConnectionState = BT_STATE_IDLE;
-    private String bluetoothLastError = "";
-    private long bluetoothLastErrorAtMs = 0L;
-    private String bluetoothErrorRecoverySuggestion = "";
-    private final JSONArray bluetoothConnectSamples = new JSONArray();
-    private final Runnable bluetoothConnectionStatusCheckRunnable = new Runnable() {
+    private final Map<String, BluetoothDevice> knownBluetoothDevices = new LinkedHashMap<>(); // 已发现的蓝牙设备列表
+    private final Map<String, String> bluetoothDeviceNames = new LinkedHashMap<>(); // 蓝牙设备名称映射
+    private final Map<String, Integer> bluetoothDeviceRssi = new LinkedHashMap<>(); // 蓝牙设备信号强度映射
+    private final Map<String, Long> bluetoothDeviceLastSeen = new LinkedHashMap<>(); // 蓝牙设备最后发现时间映射
+    private final Handler bluetoothHandler = new Handler(Looper.getMainLooper()); // 蓝牙操作Handler
+    @Nullable // VHAL物理按键信号读取器（车端方控信号）
+    private VhalSignalReader vhalSignalReader;
+    private volatile boolean vhalKeyPolling = false; // VHAL物理按键信号轮询是否运行中
+    @Nullable // VHAL物理按键信号轮询线程
+    private Thread vhalKeyPollThread;
+    private int lastVhalKeySignal = VhalSignalReader.SIGNAL_NONE; // 上次VHAL按键信号（用于边沿触发去重）
+    private boolean bluetoothReceiverRegistered = false; // 蓝牙广播接收器是否已注册
+    private String activeAudioModule = "local"; // 当前活跃的音频模块（local/bluetooth）
+    private String pendingBluetoothConnectAddress = ""; // 待连接的蓝牙设备地址
+    private String confirmedBluetoothAudioAddress = ""; // 已确认连接的蓝牙音频设备地址
+    private String requestedBluetoothControlAddress = ""; // 请求控制的蓝牙设备地址
+    private long bluetoothRemoteProgressMs = -1L; // 蓝牙远程播放进度（毫秒）
+    private long bluetoothRemoteDurationMs = -1L; // 蓝牙远程播放时长（毫秒）
+    private long bluetoothRemoteProgressUpdatedAtMs = 0L; // 蓝牙远程进度更新时间戳
+    private boolean bluetoothRemotePlayingKnown = false; // 是否知道蓝牙远程播放状态
+    private boolean bluetoothRemotePlaying = false; // 蓝牙远程是否正在播放
+    private String bluetoothRemoteTitle = ""; // 蓝牙远程曲目标题
+    private String bluetoothRemoteArtist = ""; // 蓝牙远程曲目艺术家
+    private String bluetoothRemoteAlbum = ""; // 蓝牙远程曲目专辑
+    private String bluetoothRemoteCoverBase64 = ""; // 蓝牙远程专辑封面（Base64 JPEG，用于前端同步显示）
+    private int statusBarTopPx = DEFAULT_STATUS_BAR_TOP_PX; // 状态栏顶部像素
+    private int navBarBottomPx = 0; // 底部导航栏像素（用于避免按键被系统导航栏遮挡）
+    private boolean statusBarLightBackground = false; // 状态栏是否浅色背景
+    private boolean playbackControlReceiverRegistered = false; // 播放控制广播接收器是否已注册
+    private boolean usbReceiverRegistered = false; // USB广播接收器是否已注册
+    private volatile boolean usbScanning = false; // USB是否正在扫描
+    private volatile String usbMusicStateJson; // USB音乐状态JSON（在onCreate中初始化）
+    private int usbScanToken = 0; // USB扫描令牌（用于取消旧扫描）
+    @Nullable
+    private StorageManager storageManager; // 存储管理器，用于获取可移动存储设备
+    private final Map<String, JSONObject> persistedUsbFavorites = new LinkedHashMap<>(); // 持久化的USB收藏列表
+    private volatile boolean favoritesLoaded = false; // 收藏是否已加载
+    private boolean localPlaybackPlaying = false; // 本地播放是否正在进行
+    private String localPlaybackTitle; // 本地播放曲目标题（在onCreate中初始化）
+    private String localPlaybackArtist; // 本地播放艺术家（在onCreate中初始化）
+    private int pendingBluetoothConnectAttempts = 0; // 待处理蓝牙连接尝试次数
+    private long pendingBluetoothConnectStartedAtMs = 0L; // 待处理蓝牙连接开始时间
+    private long lastBluetoothConnectDurationMs = -1L; // 上次蓝牙连接耗时
+    private long confirmedBluetoothConnectedAtMs = 0L; // 确认蓝牙连接时间
+    private int bluetoothConnectSuccessCount = 0; // 蓝牙连接成功次数
+    private int bluetoothConnectFailureCount = 0; // 蓝牙连接失败次数
+    private int bluetoothDisconnectCount = 0; // 蓝牙断开次数
+    private long bluetoothTotalConnectedDurationMs = 0L; // 蓝牙累计连接时长
+    private String lastBluetoothConnectAddress = ""; // 上次蓝牙连接地址
+    private String lastBluetoothConnectResult = "idle"; // 上次蓝牙连接结果
+    private String bluetoothAutoReconnectAddress = ""; // 蓝牙自动重连地址
+    private int bluetoothAutoReconnectAttempts = 0; // 蓝牙自动重连尝试次数
+    private boolean userInitiatedBluetoothDisconnect = false; // 是否用户主动断开蓝牙
+    private boolean pendingBluetoothDiscoveryAfterPermission = false; // 权限授予后是否待执行蓝牙搜索
+    private boolean bluetoothDiscoveryPending = false; // 蓝牙搜索是否待处理
+    private long bluetoothDiscoveryStartedAtMs = 0L; // 蓝牙搜索开始时间
+    private boolean bluetoothScanningForAudioDevicesOnly = true; // 蓝牙搜索是否仅限音频设备
+    private String bluetoothConnectionState = BT_STATE_IDLE; // 蓝牙连接状态机当前状态
+    private String bluetoothLastError = ""; // 蓝牙最后错误信息
+    private long bluetoothLastErrorAtMs = 0L; // 蓝牙最后错误时间
+    private String bluetoothErrorRecoverySuggestion = ""; // 蓝牙错误恢复建议
+    private final JSONArray bluetoothConnectSamples = new JSONArray(); // 蓝牙连接采样记录
+    private final Runnable bluetoothConnectionStatusCheckRunnable = new Runnable() { // 蓝牙连接状态定时检查
         @Override
         public void run() {
             checkBluetoothConnectionStatus();
             bluetoothHandler.postDelayed(this, BLUETOOTH_CONNECTION_STATUS_CHECK_INTERVAL_MS);
         }
     };
-    private final AudioManager.OnAudioFocusChangeListener bluetoothAudioFocusListener = focusChange -> {
+    private final AudioManager.OnAudioFocusChangeListener bluetoothAudioFocusListener = focusChange -> { // 蓝牙音频焦点监听器
         if ("bluetooth".equals(activeAudioModule) && focusChange == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT) {
             publishBluetoothEvent("\u84dd\u7259\u72b6\u6001\u5df2\u66f4\u65b0");
         }
     };
 
-    @Nullable
+    @Nullable // 窗口管理器，用于添加蓝牙返回悬浮窗
     private WindowManager windowManager;
-    @Nullable
+    @Nullable // 蓝牙设置返回按钮悬浮窗
     private View bluetoothBackOverlay;
-    @Nullable
+    @Nullable // 收音机模块悬浮tab栏（覆盖在系统收音机Activity之上，保持tab栏可见可点击）
+    private View radioTabOverlay;
+    @Nullable // 电话管理器，用于监听来电状态
     private TelephonyManager telephonyManager;
-    @Nullable
+    @Nullable // 电话状态监听器
     private PhoneStateListener phoneStateListener;
-    private boolean phoneCallActive = false;
+    private boolean phoneCallActive = false; // 是否有电话正在通话
 
+    // USB广播接收器：监听USB设备连接/断开、媒体挂载/卸载等事件
     private final BroadcastReceiver usbReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -235,7 +281,7 @@ public class MainActivity extends AppCompatActivity {
                     || Intent.ACTION_MEDIA_SCANNER_STARTED.equals(action)) {
                 cancelUsbDisconnectedNotification();
                 if (!usbScanning) {
-                    publishUsbEvent("connected", "USB\u8bbe\u5907\u5df2\u8fde\u63a5");
+                    publishUsbEvent("connected", getString(R.string.usb_msg_connected));
                     startUsbScanAsync();
                 }
             } else if (Intent.ACTION_MEDIA_UNMOUNTED.equals(action)
@@ -245,8 +291,8 @@ public class MainActivity extends AppCompatActivity {
                     || UsbManager.ACTION_USB_DEVICE_DETACHED.equals(action)) {
                 usbScanToken += 1;
                 usbScanning = false;
-                usbMusicStateJson = createUsbDisconnectedJson("USB \u8bbe\u5907\u5df2\u65ad\u5f00");
-                publishUsbEvent("disconnected", "USB \u8bbe\u5907\u5df2\u65ad\u5f00");
+                usbMusicStateJson = createUsbDisconnectedJson(getString(R.string.usb_msg_disconnected));
+                publishUsbEvent("disconnected", getString(R.string.usb_msg_disconnected));
                 showUsbDisconnectedNotification();
             }
         }
@@ -322,6 +368,7 @@ public class MainActivity extends AppCompatActivity {
         }
     };
 
+    // 播放控制广播接收器：接收MusicPlaybackService的播放控制命令并分发给WebView
     private final BroadcastReceiver playbackControlReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -332,6 +379,7 @@ public class MainActivity extends AppCompatActivity {
         }
     };
 
+    // 蓝牙广播接收器：监听蓝牙设备发现、配对、连接状态变化、播放状态变化等事件
     private final BroadcastReceiver bluetoothReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -401,6 +449,7 @@ public class MainActivity extends AppCompatActivity {
                     }
                     publishBluetoothEvent("\u666e\u901a A2DP \u8f93\u51fa\u5df2\u8fde\u63a5\uff0c\u84dd\u7259\u97f3\u4e50\u63a5\u6536\u9700\u8981 A2DP Sink");
                     } else {
+                    autoReturnToBluetoothOnConnected();
                     if (device != null && device.getAddress().equals(pendingBluetoothConnectAddress)) {
                         confirmedBluetoothAudioAddress = device.getAddress();
                         rememberBluetoothControlTarget(device);
@@ -445,6 +494,7 @@ public class MainActivity extends AppCompatActivity {
                     prepareBluetoothSpeakerRoute();
                     publishBluetoothEvent(message);
                     publishBluetoothPlaybackState();
+                    autoReturnToBluetoothOnConnected();
                 } else if (state == BluetoothProfile.STATE_CONNECTING) {
                     publishBluetoothEvent("\u84dd\u7259\u72b6\u6001\u5df2\u66f4\u65b0");
                 } else if (state == BluetoothProfile.STATE_DISCONNECTED) {
@@ -510,17 +560,43 @@ public class MainActivity extends AppCompatActivity {
         }
     };
 
+    /**
+     * Activity创建时调用，执行初始化操作：
+     * 配置EdgeToEdge沉浸式、设置WebView、蓝牙、USB、电话监听等组件
+     */
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_main);
+        // 确保根容器和WebView无padding，全屏填充
+        View rootView = findViewById(R.id.main);
+        rootView.setPadding(0, 0, 0, 0);
         musicWebView = findViewById(R.id.musicWebView);
+        musicWebView.setPadding(0, 0, 0, 0);
+        musicWebView.setClipToPadding(false);
+        // 初始化本地化播放信息默认值
+        localPlaybackTitle = getString(R.string.default_title);
+        localPlaybackArtist = getString(R.string.default_artist);
+        // 初始化存储管理器，用于后续USB设备检测
+        storageManager = (StorageManager) getSystemService(Context.STORAGE_SERVICE);
+        // 初始化USB状态JSON
+        usbMusicStateJson = createUsbDisconnectedJson(getString(R.string.usb_msg_not_connected));
         applyStatusBarTheme(false);
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
+        // 监听WindowInsets：
+        // 1) 每次insets分发后重置根容器/WebView padding为0，覆盖Material3自动设置的系统栏padding
+        // 2) 提取状态栏高度注入CSS变量
+        // 3) 返回原始insets，避免返回null导致AndroidX内部NPE
+        ViewCompat.setOnApplyWindowInsetsListener(rootView, (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+            Insets navBars = insets.getInsets(WindowInsetsCompat.Type.navigationBars());
             statusBarTopPx = systemBars.top;
-            v.setPadding(systemBars.left, 0, systemBars.right, systemBars.bottom);
+            // 取系统栏与导航栏底部的较大值，覆盖手势导航与三键导航两种场景
+            navBarBottomPx = Math.max(systemBars.bottom, navBars.bottom);
+            v.setPadding(0, 0, 0, 0);
+            if (musicWebView != null) {
+                musicWebView.setPadding(0, 0, 0, 0);
+            }
             injectSafeAreaCssVariables();
             return insets;
         });
@@ -532,7 +608,31 @@ public class MainActivity extends AppCompatActivity {
         registerPlaybackControlReceiver();
         requestAudioPermissionIfNeeded();
         requestPhoneStatePermissionIfNeeded();
+        startVhalKeySignalPolling();
         musicWebView.loadUrl(PLAYER_URL);
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        // 处理来自悬浮tab栏的模块切换请求
+        String targetModule = intent.getStringExtra("extra_switch_module");
+        if (targetModule != null && !targetModule.isEmpty()) {
+            // 安全校验：仅允许已知的模块名称，避免脚本注入
+            if (!"bluetooth".equals(targetModule)
+                    && !"radio".equals(targetModule)
+                    && !"usb".equals(targetModule)) {
+                return;
+            }
+            // 隐藏悬浮窗（悬浮tab栏和蓝牙返回按钮）
+            hideRadioTabOverlay();
+            hideBluetoothBackOverlay();
+            // 通知WebView切换到目标模块
+            final String module = targetModule;
+            evaluatePlayerScript("if(typeof switchModule==='function'){switchModule('" + module + "');}");
+            Log.d(TAG, "收到模块切换请求，切换到: " + module);
+        }
     }
 
     @Override
@@ -545,8 +645,10 @@ public class MainActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         hideBluetoothBackOverlay();
+        // 清理可能残留的悬浮tab栏（应用从后台恢复时）
+        hideRadioTabOverlay();
         checkSystemConnectedBluetoothDevices();
-        if (!findUsbRoots().isEmpty() && !isUsbStateConnected()) {
+        if (hasUsbStorageReadPermission() && !findUsbRoots().isEmpty() && !isUsbStateConnected()) {
             startUsbScanAsync();
         }
         if (bluetoothAdapter != null && bluetoothAdapter.isEnabled()) {
@@ -569,6 +671,10 @@ public class MainActivity extends AppCompatActivity {
         evaluatePlayerScript("window.onNativeAppResume&&window.onNativeAppResume();");
     }
 
+    /**
+     * 配置WebView设置：
+     * 启用JS、DOM存储、文件访问、媒体播放等设置，注入JS桥接接口和WebChromeClient
+     */
     @SuppressLint("SetJavaScriptEnabled")
     private void configureWebView() {
         WebSettings settings = musicWebView.getSettings();
@@ -680,18 +786,33 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void requestAudioPermissionIfNeeded() {
+        // 1. 存储访问权限：Android 11+ 直接读取U盘需要"所有文件访问"，Android 6-10 需要 READ_EXTERNAL_STORAGE
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            if (!Environment.isExternalStorageManager()) {
+                requestAllFilesAccess();
+                return;
+            }
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
+                && ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
+                != PackageManager.PERMISSION_GRANTED) {
+            permissionLauncher.launch(Manifest.permission.READ_EXTERNAL_STORAGE);
+            return;
+        }
+        // 2. Android 13+：音频媒体读取权限
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
                 && ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_AUDIO)
                 != PackageManager.PERMISSION_GRANTED) {
             permissionLauncher.launch(Manifest.permission.READ_MEDIA_AUDIO);
             return;
         }
+        // 3. Android 13+：通知权限
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
                 && ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
                 != PackageManager.PERMISSION_GRANTED) {
             permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS);
             return;
         }
+        // 4. 蓝牙/位置权限
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             requestBluetoothRuntimePermissionsIfNeeded(false);
         } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
@@ -699,6 +820,30 @@ public class MainActivity extends AppCompatActivity {
                 != PackageManager.PERMISSION_GRANTED) {
             permissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION);
         }
+    }
+
+    /** Android 11+：跳转"所有文件访问"权限设置页，用于直接读取U盘挂载点。 */
+    private void requestAllFilesAccess() {
+        try {
+            Intent intent = new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
+                    Uri.parse("package:" + getPackageName()));
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(intent);
+        } catch (Exception e) {
+            Log.e(TAG, "跳转所有文件访问权限设置失败", e);
+        }
+    }
+
+    /** 判断当前是否具备直接读取U盘(可移动存储)文件的权限。 */
+    private boolean hasUsbStorageReadPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            return Environment.isExternalStorageManager();
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            return ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
+                    == PackageManager.PERMISSION_GRANTED;
+        }
+        return true;
     }
 
     private boolean requestBluetoothRuntimePermissionsIfNeeded(boolean retryDiscoveryAfterGrant) {
@@ -742,6 +887,10 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    /**
+     * 开始蓝牙设备搜索（内部方法）：
+     * 检查蓝牙状态和权限，启动设备发现流程，设置搜索超时自动停止
+     */
     private String startBluetoothDiscoveryInternal() {
         if (bluetoothAdapter == null) {
             return statusJson(false, "\u5f53\u524d\u8bbe\u5907\u4e0d\u652f\u6301\u84dd\u7259");
@@ -896,6 +1045,10 @@ public class MainActivity extends AppCompatActivity {
         return uris.isEmpty() ? null : uris.toArray(new Uri[0]);
     }
 
+    /**
+     * 配置蓝牙广播接收器和Profile代理：
+     * 注册蓝牙状态变化、设备发现、配对、连接等广播监听器
+     */
     private void configureBluetooth() {
         bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
         ensureA2dpProxy();
@@ -926,6 +1079,10 @@ public class MainActivity extends AppCompatActivity {
         bluetoothReceiverRegistered = true;
     }
 
+    /**
+     * 获取A2DP、A2DP Sink、AVRCP Controller Profile代理：
+     * 通过反射方式获取蓝牙Profile代理，用于后续蓝牙音频输出/接收/控制
+     */
     private void ensureA2dpProxy() {
         if (bluetoothAdapter == null || !hasBluetoothConnectPermission()) {
             return;
@@ -1221,27 +1378,27 @@ public class MainActivity extends AppCompatActivity {
 
     private String buildBluetoothRecoverySuggestion(String reason) {
         if (reason == null || reason.isEmpty()) {
-            return "请靠近蓝牙设备后重试连接";
+            return getString(R.string.bt_err_retry_hint);
         }
         if (reason.contains("权限") || reason.contains("系统限制")) {
-            return "请在系统设置中授予蓝牙连接权限，然后重新打开应用";
+            return getString(R.string.bt_err_grant_permission);
         }
         if (reason.contains("超时") || reason.contains("timeout")) {
-            return "请确认设备已开启蓝牙且在有效范围内，然后重试连接";
+            return getString(R.string.bt_err_confirm_bluetooth);
         }
         if (reason.contains("配对") || reason.contains("bond")) {
-            return "请在系统蓝牙设置中完成设备配对，然后返回应用重试";
+            return getString(R.string.bt_err_complete_pairing);
         }
         if (reason.contains("未开启") || reason.contains("未连接")) {
-            return "请先开启手机蓝牙并确保设备已配对";
+            return getString(R.string.bt_err_enable_first);
         }
         if (reason.contains("已断开") || reason.contains("disconnect")) {
-            return "蓝牙连接已断开，系统将尝试自动重连，若多次失败请手动重新连接";
+            return getString(R.string.bt_err_reconnect_hint);
         }
         if (reason.contains("设备引用") || reason.contains("失效")) {
-            return "请重启应用以重新初始化蓝牙设备引用";
+            return getString(R.string.bt_err_restart_app);
         }
-        return "请靠近蓝牙设备，确认设备已开启蓝牙且在有效范围内，然后重试连接";
+        return getString(R.string.bt_err_retry_hint);
     }
 
     private void recordBluetoothDisconnect(@Nullable BluetoothDevice device) {
@@ -1401,6 +1558,7 @@ public class MainActivity extends AppCompatActivity {
             result.put("trackTitle", bluetoothRemoteTitle);
             result.put("trackArtist", bluetoothRemoteArtist);
             result.put("trackAlbum", bluetoothRemoteAlbum);
+            result.put("trackCover", bluetoothRemoteCoverBase64);
             appendBluetoothRemoteProgress(result, playing);
         } catch (Exception ignored) {
             return "{\"connected\":false,\"playing\":false,\"progressKnown\":false}";
@@ -1431,6 +1589,7 @@ public class MainActivity extends AppCompatActivity {
         bluetoothRemotePlayingKnown = true;
         bluetoothRemotePlaying = false;
         bluetoothRemoteProgressUpdatedAtMs = System.currentTimeMillis();
+        bluetoothRemoteCoverBase64 = "";
         setBluetoothConnectionState(BT_STATE_DISCONNECTED);
         publishBluetoothPlaybackState();
     }
@@ -1515,8 +1674,57 @@ public class MainActivity extends AppCompatActivity {
         bluetoothRemoteArtist = getMetadataText(metadata, MediaMetadata.METADATA_KEY_ARTIST);
         bluetoothRemoteAlbum = getMetadataText(metadata, MediaMetadata.METADATA_KEY_ALBUM);
         long duration = metadata.getLong(MediaMetadata.METADATA_KEY_DURATION);
-        if (duration > 0L) {
-            bluetoothRemoteDurationMs = duration;
+        // 新曲目元数据若未携带有效时长，则重置为未知，避免沿用上一曲的旧时长
+        bluetoothRemoteDurationMs = duration > 0L ? duration : -1L;
+        // 同样重置封面，避免新曲目无封面时沿用上一曲封面
+        String cover = extractBluetoothAlbumArtBase64(metadata);
+        bluetoothRemoteCoverBase64 = cover == null ? "" : cover;
+    }
+
+    /**
+     * 从 MediaMetadata 中提取专辑封面并转为 Base64 JPEG。
+     * 优先级：ALBUM_ART > ART > DISPLAY_ICON。
+     * 为保证与源设备图像质量和比例一致，仅在尺寸过大时等比缩放，避免过度压缩。
+     */
+    @Nullable
+    private String extractBluetoothAlbumArtBase64(MediaMetadata metadata) {
+        Bitmap cover = null;
+        try {
+            cover = metadata.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART);
+        } catch (Exception ignored) {
+            cover = null;
+        }
+        if (cover == null) {
+            try {
+                cover = metadata.getBitmap(MediaMetadata.METADATA_KEY_ART);
+            } catch (Exception ignored) {
+                cover = null;
+            }
+        }
+        if (cover == null) {
+            try {
+                cover = metadata.getBitmap(MediaMetadata.METADATA_KEY_DISPLAY_ICON);
+            } catch (Exception ignored) {
+                cover = null;
+            }
+        }
+        if (cover == null || cover.isRecycled()) {
+            return null;
+        }
+        try {
+            int maxEdge = Math.max(cover.getWidth(), cover.getHeight());
+            // 等比缩放，避免超大封面导致 JS 桥传输过慢，同时保留原始宽高比例
+            if (maxEdge > BLUETOOTH_COVER_MAX_EDGE_PX) {
+                float scale = (float) BLUETOOTH_COVER_MAX_EDGE_PX / (float) maxEdge;
+                int targetWidth = Math.max(1, Math.round(cover.getWidth() * scale));
+                int targetHeight = Math.max(1, Math.round(cover.getHeight() * scale));
+                cover = Bitmap.createScaledBitmap(cover, targetWidth, targetHeight, true);
+            }
+            ByteArrayOutputStream output = new ByteArrayOutputStream();
+            cover.compress(Bitmap.CompressFormat.JPEG, BLUETOOTH_COVER_JPEG_QUALITY, output);
+            return Base64.encodeToString(output.toByteArray(), Base64.NO_WRAP);
+        } catch (Exception ignored) {
+            return null;
         }
     }
 
@@ -1947,6 +2155,10 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * 请求蓝牙A2DP连接：
+     * 发起蓝牙设备配对（如未配对），然后请求A2DP Profile连接
+     */
     private String requestBluetoothA2dpConnection(BluetoothDevice device) {
         try {
             userInitiatedBluetoothDisconnect = false;
@@ -2066,6 +2278,10 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * 准备蓝牙音频路由（作为音频输出源）：
+     * 将音频输出路由切换到蓝牙A2DP设备，设置音频焦点和音频管理器参数
+     */
     private void prepareBluetoothMusicRoute() {
         AudioManager audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
         if (audioManager == null) {
@@ -2086,6 +2302,10 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * 准备蓝牙扬声器路由（作为音频接收端）：
+     * 通过A2DP Sink接收蓝牙音频播放，并启用扬声器输出
+     */
     private void prepareBluetoothSpeakerRoute() {
         AudioManager audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
         if (audioManager == null) {
@@ -2268,6 +2488,10 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * 发送媒体控制按键：
+     * 优先通过AVRCP协议发送媒体命令到蓝牙设备，失败则回退到系统AudioManager分发
+     */
     private boolean sendMediaKey(int keyCode) {
         AudioManager audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
         if (audioManager == null) {
@@ -2334,6 +2558,173 @@ public class MainActivity extends AppCompatActivity {
             startActivity(new Intent(Settings.ACTION_SETTINGS));
         }
         showBluetoothBackOverlay();
+    }
+
+    /**
+     * 通过标准Android显式Intent启动车载系统收音机界面
+     * 目标组件：com.android.car.radio/.RadioActivity
+     * 遵循Android应用组件交互最佳实践，包含异常处理和多版本兼容性降级策略
+     *
+     * 支持嵌入式启动模式：当传入有效的bounds矩形时，目标Activity会显示在指定区域内，
+     * 不会遮挡上方的tab切换栏；bounds无效时降级为全屏启动。
+     *
+     * @param left   目标显示区域左边界（屏幕像素坐标，0表示全屏）
+     * @param top    目标显示区域上边界（屏幕像素坐标，通常为tab栏底部Y坐标）
+     * @param right  目标显示区域右边界（屏幕像素坐标）
+     * @param bottom 目标显示区域下边界（屏幕像素坐标，通常为屏幕高度）
+     * @return JSON格式的启动结果，包含success、message、launchMode、bounds等字段
+     */
+    private String launchCarRadioActivity(int left, int top, int right, int bottom) {
+        JSONObject result = new JSONObject();
+        try {
+            // 判断是否使用嵌入式bounds模式
+            final boolean hasBounds = right > left && bottom > top;
+            Rect bounds = null;
+            if (hasBounds) {
+                try {
+                    bounds = new Rect(left, top, right, bottom);
+                } catch (Exception ignored) {
+                    bounds = null;
+                }
+            }
+            final Rect finalBounds = bounds;
+
+            // 1. 首选：使用显式ComponentName + 可选bounds启动目标收音机Activity
+            Intent explicitIntent = new Intent();
+            explicitIntent.setClassName(
+                    "com.android.car.radio",
+                    "com.android.car.radio.RadioActivity"
+            );
+            explicitIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK
+                    | Intent.FLAG_ACTIVITY_CLEAR_TOP
+                    | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+
+            // 构建ActivityOptions，设置启动bounds（API 24+），使目标Activity显示在tab栏下方区域
+            ActivityOptions options = ActivityOptions.makeBasic();
+            if (finalBounds != null) {
+                try {
+                    options.setLaunchBounds(finalBounds);
+                } catch (Exception boundsEx) {
+                    Log.w(TAG, "setLaunchBounds失败，降级为全屏启动: " + boundsEx.getMessage());
+                }
+            }
+
+            try {
+                startActivity(explicitIntent, options.toBundle());
+                result.put("success", true);
+                result.put("message", finalBounds != null
+                        ? "已通过显式Intent嵌入式启动车载收音机界面（bounds区域显示，不遮挡tab栏）"
+                        : "已通过显式Intent启动车载收音机界面（全屏模式）");
+                result.put("launchMode", finalBounds != null ? "explicit_embedded" : "explicit");
+                result.put("bounds", finalBounds != null ? finalBounds.toString() : "fullscreen");
+                result.put("fallbackUsed", false);
+                Log.d(TAG, "成功启动车载收音机：com.android.car.radio/.RadioActivity，bounds=" + finalBounds);
+                // 注意：此处不得显示"返回"悬浮按钮（showBluetoothBackOverlay），
+                // 否则会遮挡顶部界面切换栏，破坏切换栏与Radio界面的无缝衔接
+                return result.toString();
+            } catch (Exception explicitException) {
+                Log.w(TAG, "显式Intent启动收音机失败，尝试降级方案: " + explicitException.getMessage());
+            }
+
+            // 2. 降级方案1：使用PackageManager查询并解析隐式Intent（ACTION_MAIN + CATEGORY_LAUNCHER）
+            try {
+                Intent launchIntent = getPackageManager().getLaunchIntentForPackage("com.android.car.radio");
+                if (launchIntent != null) {
+                    launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK
+                            | Intent.FLAG_ACTIVITY_CLEAR_TOP
+                            | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+                    ActivityOptions pmOptions = ActivityOptions.makeBasic();
+                    if (finalBounds != null) {
+                        try {
+                            pmOptions.setLaunchBounds(finalBounds);
+                        } catch (Exception ignored) {
+                        }
+                    }
+                    startActivity(launchIntent, pmOptions.toBundle());
+                    result.put("success", true);
+                    result.put("message", "已通过PackageManager启动车载收音机应用");
+                    result.put("launchMode", "packageManager");
+                    result.put("bounds", finalBounds != null ? finalBounds.toString() : "fullscreen");
+                    result.put("fallbackUsed", true);
+                    Log.d(TAG, "通过PackageManager降级启动收音机成功");
+                    return result.toString();
+                }
+            } catch (Exception pmException) {
+                Log.w(TAG, "PackageManager降级方案也失败: " + pmException.getMessage());
+            }
+
+            // 3. 降级方案2：尝试使用通用收音机Intent（适配不同厂商定制的ROM）
+            try {
+                Intent genericRadioIntent = new Intent(Intent.ACTION_MAIN);
+                genericRadioIntent.addCategory(Intent.CATEGORY_LAUNCHER);
+                genericRadioIntent.setPackage("com.android.car.radio");
+                genericRadioIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                ActivityOptions genericOptions = ActivityOptions.makeBasic();
+                if (finalBounds != null) {
+                    try {
+                        genericOptions.setLaunchBounds(finalBounds);
+                    } catch (Exception ignored) {
+                    }
+                }
+                startActivity(genericRadioIntent, genericOptions.toBundle());
+                result.put("success", true);
+                result.put("message", "已通过通用Intent启动车载收音机");
+                result.put("launchMode", "generic");
+                result.put("bounds", finalBounds != null ? finalBounds.toString() : "fullscreen");
+                result.put("fallbackUsed", true);
+                Log.d(TAG, "通过通用Intent降级启动收音机成功");
+                return result.toString();
+            } catch (Exception genericException) {
+                Log.w(TAG, "通用Intent降级方案也失败: " + genericException.getMessage());
+            }
+
+            // 4. 所有方案都失败，返回错误信息
+            result.put("success", false);
+            result.put("message", "当前系统未检测到标准车载收音机应用（com.android.car.radio），请确认ROM是否包含收音机组件");
+            result.put("launchMode", "none");
+            result.put("fallbackUsed", true);
+            result.put("errorDetail", "所有启动方案均失败：显式Intent→PackageManager→通用Intent");
+            return result.toString();
+
+        } catch (Exception outerException) {
+            try {
+                result.put("success", false);
+                result.put("message", "启动收音机界面时发生异常：" + outerException.getMessage());
+                result.put("launchMode", "error");
+                result.put("errorDetail", outerException.getClass().getSimpleName());
+            } catch (Exception ignored) {
+            }
+            Log.e(TAG, "启动收音机界面总异常", outerException);
+            return result.toString();
+        }
+    }
+
+    /**
+     * 将当前应用MainActivity重新拉到前台，覆盖其他Activity（如收音机Activity）。
+     * 用于切换离开收音机模块时，将RadioActivity遮挡在自身窗口下方，恢复应用界面。
+     *
+     * @return JSON格式的操作结果
+     */
+    private String bringMainActivityToFront() {
+        JSONObject result = new JSONObject();
+        try {
+            Intent bringToFront = new Intent(this, MainActivity.class);
+            bringToFront.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK
+                    | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
+                    | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+            startActivity(bringToFront);
+            result.put("success", true);
+            result.put("message", "应用已回到前台");
+            Log.d(TAG, "MainActivity已重新拉到前台，覆盖收音机Activity");
+        } catch (Exception e) {
+            try {
+                result.put("success", false);
+                result.put("message", "回到前台失败：" + e.getMessage());
+            } catch (Exception ignored) {
+            }
+            Log.e(TAG, "MainActivity回到前台失败", e);
+        }
+        return result.toString();
     }
 
     private void showBluetoothBackOverlay() {
@@ -2425,6 +2816,173 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * 蓝牙设备连接成功后，若当前正处于系统蓝牙设置界面（悬浮返回按钮显示中），
+     * 则自动收起返回按钮并将应用拉回前台，回退到蓝牙音乐界面。
+     */
+    private void autoReturnToBluetoothOnConnected() {
+        if (bluetoothBackOverlay != null && "bluetooth".equals(activeAudioModule)) {
+            hideBluetoothBackOverlay();
+            bringMainActivityToFront();
+            Log.d(TAG, "蓝牙设备已连接，自动返回蓝牙音乐界面");
+        }
+    }
+
+    /**
+     * 显示悬浮tab栏，覆盖在系统收音机Activity之上
+     * 当设备不支持setLaunchBounds嵌入式启动（RadioActivity全屏显示）时，
+     * 通过此悬浮窗保持上方tab切换栏可见可点击，用户可点击tab切换回其他模块
+     *
+     * @param left       tab栏左边界的屏幕像素坐标
+     * @param top        tab栏上边界的屏幕像素坐标（通常为状态栏高度）
+     * @param right      tab栏右边界的屏幕像素坐标
+     * @param bottom     tab栏下边界的屏幕像素坐标
+     * @param lightTheme 是否为浅色主题（影响tab栏颜色）
+     * @param labels     三个tab按钮的文本（蓝牙/收音机/U盘）
+     */
+    private void showRadioTabOverlay(int left, int top, int right, int bottom, boolean lightTheme, String[] labels) {
+        if (windowManager == null) {
+            windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
+        }
+        if (windowManager == null) {
+            return;
+        }
+        // 先移除已有的悬浮tab栏
+        hideRadioTabOverlay();
+        if (!Settings.canDrawOverlays(this)) {
+            try {
+                Intent intent = new Intent(
+                        Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                        Uri.parse("package:" + getPackageName())
+                );
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                startActivity(intent);
+            } catch (Exception ignored) {
+            }
+            return;
+        }
+
+        int width = right - left;
+        int height = bottom - top;
+        if (width <= 0 || height <= 0) {
+            return;
+        }
+
+        // 颜色配置（与Web端CSS变量一致）
+        // 深色模式：白色透明叠加；浅色模式：黑色透明叠加
+        int inactiveTextColor = lightTheme ? 0x94000000 : 0x94FFFFFF;   // rgba(0,0,0,0.58) / rgba(255,255,255,0.58)
+        int activeTextColor = lightTheme ? 0xFF333333 : 0xFFF1F4FF;     // #333333 / #f1f4ff
+        int inactiveBgColor = lightTheme ? 0x08000000 : 0x08FFFFFF;     // rgba(0,0,0,0.03) / rgba(255,255,255,0.03)
+        int activeBgColor = lightTheme ? 0x12000000 : 0x12FFFFFF;       // rgba(0,0,0,0.07) / rgba(255,255,255,0.07)
+
+        float density = getResources().getDisplayMetrics().density;
+        int cornerRadius = (int) (14f * density); // 14dp 圆角
+        int tabGap = (int) (8f * density);        // 8dp 间距
+
+        // 创建tab栏容器：水平三等分布局
+        android.widget.LinearLayout container = new android.widget.LinearLayout(this);
+        container.setOrientation(android.widget.LinearLayout.HORIZONTAL);
+        container.setWeightSum(3);
+
+        // tab配置：目标模块、是否激活
+        String[] modules = {"bluetooth", "radio", "usb"};
+        if (labels == null || labels.length < 3) {
+            labels = new String[]{"蓝牙音乐", "收音机", "U盘音乐"};
+        }
+
+        for (int i = 0; i < 3; i++) {
+            TextView tabButton = new TextView(this);
+            android.widget.LinearLayout.LayoutParams tabParams = new android.widget.LinearLayout.LayoutParams(
+                    0,
+                    android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
+                    1f
+            );
+            // 设置tab间距（左右各留gap/2）
+            if (i == 0) {
+                tabParams.setMarginStart(0);
+                tabParams.setMarginEnd(tabGap / 2);
+            } else if (i == 2) {
+                tabParams.setMarginStart(tabGap / 2);
+                tabParams.setMarginEnd(0);
+            } else {
+                tabParams.setMarginStart(tabGap / 2);
+                tabParams.setMarginEnd(tabGap / 2);
+            }
+            tabButton.setLayoutParams(tabParams);
+            tabButton.setText(labels[i]);
+            tabButton.setGravity(Gravity.CENTER);
+            tabButton.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f);
+            tabButton.setIncludeFontPadding(false);
+            try {
+                tabButton.setTypeface(tabButton.getTypeface(), android.graphics.Typeface.BOLD);
+            } catch (Exception ignored) {
+            }
+
+            final boolean isActive = "radio".equals(modules[i]);
+            // 设置背景（圆角矩形）
+            GradientDrawable bg = new GradientDrawable();
+            bg.setShape(GradientDrawable.RECTANGLE);
+            bg.setCornerRadius(cornerRadius);
+            bg.setColor(isActive ? activeBgColor : inactiveBgColor);
+            tabButton.setBackground(bg);
+            tabButton.setTextColor(isActive ? activeTextColor : inactiveTextColor);
+
+            final String targetModule = modules[i];
+            tabButton.setOnClickListener(v -> {
+                // 点击tab按钮：启动MainActivity并传递目标模块参数
+                Intent intent = new Intent(MainActivity.this, MainActivity.class);
+                intent.putExtra("extra_switch_module", targetModule);
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+                try {
+                    startActivity(intent);
+                } catch (Exception ignored) {
+                }
+            });
+
+            container.addView(tabButton);
+        }
+
+        // 配置WindowManager参数
+        int type = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+                ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+                : WindowManager.LayoutParams.TYPE_PHONE;
+        WindowManager.LayoutParams params = new WindowManager.LayoutParams(
+                width,
+                height,
+                type,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+                        | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
+                        | WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED
+                        | WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
+                PixelFormat.TRANSLUCENT
+        );
+        params.gravity = Gravity.TOP | Gravity.START;
+        params.x = left;
+        params.y = top;
+
+        try {
+            windowManager.addView(container, params);
+            radioTabOverlay = container;
+            Log.d(TAG, "悬浮tab栏已显示: bounds=[" + left + "," + top + "," + right + "," + bottom + "], lightTheme=" + lightTheme);
+        } catch (Exception e) {
+            Log.e(TAG, "显示悬浮tab栏失败", e);
+        }
+    }
+
+    /**
+     * 隐藏悬浮tab栏
+     */
+    private void hideRadioTabOverlay() {
+        if (windowManager != null && radioTabOverlay != null) {
+            try {
+                windowManager.removeView(radioTabOverlay);
+            } catch (Exception ignored) {
+            }
+            radioTabOverlay = null;
+            Log.d(TAG, "悬浮tab栏已隐藏");
+        }
+    }
+
     private void showUsbDisconnectedNotification() {
         NotificationManager notificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
         if (notificationManager == null) {
@@ -2435,18 +2993,18 @@ public class MainActivity extends AppCompatActivity {
             if (channel == null) {
                 channel = new NotificationChannel(
                         USB_NOTIFICATION_CHANNEL_ID,
-                        "USB设备状态",
+                        getString(R.string.usb_channel_name),
                         NotificationManager.IMPORTANCE_LOW
                 );
-                channel.setDescription("USB设备连接状态通知");
+                channel.setDescription(getString(R.string.usb_channel_desc));
                 channel.setShowBadge(false);
                 notificationManager.createNotificationChannel(channel);
             }
         }
         NotificationCompat.Builder builder = new NotificationCompat.Builder(this, USB_NOTIFICATION_CHANNEL_ID)
                 .setSmallIcon(android.R.drawable.stat_sys_warning)
-                .setContentTitle("USB设备已断开")
-                .setContentText("USB设备已断开，音乐播放已停止")
+                .setContentTitle(getString(R.string.usb_disconnected_title))
+                .setContentText(getString(R.string.usb_disconnected_text))
                 .setPriority(NotificationCompat.PRIORITY_LOW)
                 .setAutoCancel(true)
                 .setOngoing(false);
@@ -2468,20 +3026,110 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
-        if (event.getAction() == KeyEvent.ACTION_UP && "bluetooth".equals(activeAudioModule)) {
+        if (event.getAction() == KeyEvent.ACTION_UP) {
             int keyCode = event.getKeyCode();
-            if (keyCode == KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE || keyCode == KeyEvent.KEYCODE_HEADSETHOOK) {
-                sendMediaKey(KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE);
-                publishBluetoothEvent("\u84dd\u7259\u97f3\u4e50\u7269\u7406\u6309\u952e\u64ad\u653e/\u6682\u505c\u5df2\u89e6\u53d1");
-                return true;
-            }
-            if (keyCode == KeyEvent.KEYCODE_MEDIA_PLAY || keyCode == KeyEvent.KEYCODE_MEDIA_PAUSE) {
-                sendMediaKey(keyCode);
-                publishBluetoothEvent("\u84dd\u7259\u97f3\u4e50\u7269\u7406\u6309\u952e\u63a7\u5236\u5df2\u89e6\u53d1");
-                return true;
+            if ("bluetooth".equals(activeAudioModule)) {
+                // 蓝牙模块：播放/暂停及上一曲/下一曲均通过AVRCP发送到蓝牙设备
+                if (keyCode == KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE || keyCode == KeyEvent.KEYCODE_HEADSETHOOK) {
+                    sendMediaKey(KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE);
+                    publishBluetoothEvent("\u84dd\u7259\u97f3\u4e50\u7269\u7406\u6309\u952e\u64ad\u653e/\u6682\u505c\u5df2\u89e6\u53d1");
+                    return true;
+                }
+                if (keyCode == KeyEvent.KEYCODE_MEDIA_PLAY || keyCode == KeyEvent.KEYCODE_MEDIA_PAUSE) {
+                    sendMediaKey(keyCode);
+                    publishBluetoothEvent("\u84dd\u7259\u97f3\u4e50\u7269\u7406\u6309\u952e\u63a7\u5236\u5df2\u89e6\u53d1");
+                    return true;
+                }
+                if (keyCode == KeyEvent.KEYCODE_MEDIA_NEXT) {
+                    handlePrevNext(true);
+                    return true;
+                }
+                if (keyCode == KeyEvent.KEYCODE_MEDIA_PREVIOUS) {
+                    handlePrevNext(false);
+                    return true;
+                }
+            } else {
+                // 收音机：上一曲=低频搜台，下一曲=高频搜台；USB/本地：上一曲/下一曲
+                if (keyCode == KeyEvent.KEYCODE_MEDIA_NEXT) {
+                    handlePrevNext(true);
+                    return true;
+                }
+                if (keyCode == KeyEvent.KEYCODE_MEDIA_PREVIOUS) {
+                    handlePrevNext(false);
+                    return true;
+                }
             }
         }
         return super.dispatchKeyEvent(event);
+    }
+
+    /**
+     * 处理上一曲/下一曲（物理按键与VHAL信号共用）：
+     * 蓝牙模块走AVRCP下发，其余模块（收音机/U盘/本地）通过JS播放控制。
+     */
+    private void handlePrevNext(boolean next) {
+        if ("bluetooth".equals(activeAudioModule)) {
+            int keyCode = next ? KeyEvent.KEYCODE_MEDIA_NEXT : KeyEvent.KEYCODE_MEDIA_PREVIOUS;
+            sendMediaKey(keyCode);
+            publishBluetoothEvent(next
+                    ? "\u84dd\u7259\u97f3\u4e50\u4e0b\u4e00\u66f2\u5df2\u89e6\u53d1"
+                    : "\u84dd\u7259\u97f3\u4e50\u4e0a\u4e00\u66f2\u5df2\u89e6\u53d1");
+        } else {
+            evaluatePlayerScript("window.onNativePlaybackControl&&window.onNativePlaybackControl('"
+                    + (next ? "next" : "previous") + "');");
+        }
+    }
+
+    /** 启动VHAL物理按键信号轮询（后台线程，连接失败会安全退出）。 */
+    private void startVhalKeySignalPolling() {
+        if (vhalKeyPolling) {
+            return;
+        }
+        vhalKeyPolling = true;
+        vhalKeyPollThread = new Thread(() -> {
+            VhalSignalReader reader = VhalSignalReader.connect(getApplicationContext());
+            if (reader == null) {
+                Log.w(TAG, "VHAL物理按键信号轮询未启动: 连接失败");
+                vhalKeyPolling = false;
+                return;
+            }
+            vhalSignalReader = reader;
+            while (vhalKeyPolling) {
+                handleVhalKeySignal(reader.readKeySignal());
+                try {
+                    Thread.sleep(VHAL_KEY_POLL_INTERVAL_MS);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+            }
+            reader.close();
+            vhalSignalReader = null;
+        }, "VhalKeySignalPoll");
+        vhalKeyPollThread.start();
+    }
+
+    /** 停止VHAL物理按键信号轮询。 */
+    private void stopVhalKeySignalPolling() {
+        vhalKeyPolling = false;
+        if (vhalKeyPollThread != null) {
+            vhalKeyPollThread.interrupt();
+            vhalKeyPollThread = null;
+        }
+    }
+
+    /** 处理读取到的VHAL按键信号，仅在同一信号持续期间去重（边沿触发）。 */
+    private void handleVhalKeySignal(int signal) {
+        if (signal == VhalSignalReader.SIGNAL_NONE) {
+            lastVhalKeySignal = signal;
+            return;
+        }
+        if (signal == lastVhalKeySignal) {
+            return;
+        }
+        lastVhalKeySignal = signal;
+        boolean next = signal == VhalSignalReader.SIGNAL_NEXT;
+        bluetoothHandler.post(() -> handlePrevNext(next));
     }
 
     private void updateLocalPlaybackNotification(String title, String artist, boolean playing) {
@@ -2491,8 +3139,8 @@ public class MainActivity extends AppCompatActivity {
             stopService(new Intent(this, MusicPlaybackService.class));
             return;
         }
-        localPlaybackTitle = normalizePlaybackText(title, "三一音乐");
-        localPlaybackArtist = normalizePlaybackText(artist, "本地音乐");
+        localPlaybackTitle = normalizePlaybackText(title, getString(R.string.default_title));
+        localPlaybackArtist = normalizePlaybackText(artist, getString(R.string.default_artist));
         localPlaybackPlaying = playing;
 
         Intent intent = new Intent(this, MusicPlaybackService.class);
@@ -2533,8 +3181,13 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
         int safeTop = Math.max(0, statusBarTopPx);
+        int safeBottom = Math.max(0, navBarBottomPx);
+        // 同时注入顶部状态栏与底部导航栏真实高度，CSS端用 max(env(), native) 取较大值，
+        // 确保 WebView 中 env(safe-area-inset-*) 不可靠时底部按键仍不会被系统导航栏遮挡
         String script = "document.documentElement.style.setProperty('--native-status-bar-top','"
                 + safeTop
+                + "px');document.documentElement.style.setProperty('--native-nav-bar-bottom','"
+                + safeBottom
                 + "px');";
         musicWebView.post(() -> musicWebView.evaluateJavascript(script, null));
     }
@@ -2558,7 +3211,7 @@ public class MainActivity extends AppCompatActivity {
         final int token = ++usbScanToken;
         usbScanning = true;
         usbMusicStateJson = createUsbScanningJson();
-        publishUsbEvent("scan_started", "USB \u8bfb\u53d6\u4e2d");
+        publishUsbEvent("scan_started", getString(R.string.usb_msg_reading));
         new Thread(() -> {
             String state = scanUsbMusicNow();
             if (token != usbScanToken) {
@@ -2568,16 +3221,20 @@ public class MainActivity extends AppCompatActivity {
             usbMusicStateJson = state;
             boolean hasTracks = getUsbTrackCount(state) > 0;
             publishUsbEvent("scan_completed", hasTracks
-                    ? "USB\u97f3\u4e50\u626b\u63cf\u5b8c\u6210"
-                    : "USB\u8bbe\u5907\u4e2d\u65e0\u97f3\u4e50\u6587\u4ef6");
+                    ? getString(R.string.usb_msg_scan_complete)
+                    : getString(R.string.usb_msg_no_music));
             syncFavoritesAfterScan(state);
         }, "UsbMusicScanner").start();
     }
 
     private String scanUsbMusicNow() {
+        // 缺少存储访问权限时，File.listFiles() 在Android 11+ 会返回null/空，导致无法读取U盘文件
+        if (!hasUsbStorageReadPermission()) {
+            return createUsbErrorJson(getString(R.string.usb_msg_no_permission));
+        }
         List<File> roots = findUsbRoots();
         if (roots.isEmpty()) {
-            return createUsbDisconnectedJson("USB\u8bbe\u5907\u672a\u8fde\u63a5");
+            return createUsbDisconnectedJson(getString(R.string.usb_msg_not_connected));
         }
         File primaryRoot = roots.get(0);
         Map<String, UsbFolderBucket> folders = new LinkedHashMap<>();
@@ -2639,12 +3296,12 @@ public class MainActivity extends AppCompatActivity {
             result.put("label", label);
             result.put("uuid", label);
             result.put("id", label + ":" + label);
-            result.put("message", folderArray.length() > 0 ? "USB\u626b\u63cf\u5b8c\u6210" : "USB\u8bbe\u5907\u4e2d\u65e0\u97f3\u4e50\u6587\u4ef6");
+            result.put("message", folderArray.length() > 0 ? getString(R.string.usb_msg_scan_complete) : getString(R.string.usb_msg_no_music));
             result.put("folders", folderArray);
             result.put("tracks", trackArray);
             return result.toString();
         } catch (Exception exception) {
-            return createUsbErrorJson("\u65e0\u6cd5\u8bc6\u522b\u6b64\u8bbe\u5907");
+            return createUsbErrorJson(getString(R.string.usb_msg_cannot_identify));
         }
     }
 
@@ -2822,7 +3479,7 @@ public class MainActivity extends AppCompatActivity {
         try {
             track.put("id", folderPath + "::" + index);
             track.put("title", stripExtension(file.getName()));
-            track.put("artist", "USB\u97f3\u4e50");
+            track.put("artist", getString(R.string.usb_artist));
             track.put("album", "");
             track.put("fileName", file.getName());
             track.put("fileSize", file.length());
@@ -2840,11 +3497,11 @@ public class MainActivity extends AppCompatActivity {
     private JSONObject createUsbTrackJson(File file, String folderPath, String folderName, int index) throws Exception {
         JSONObject track = new JSONObject();
         String title = stripExtension(file.getName());
-        String artist = "USB音乐";
+        String artist = getString(R.string.usb_artist);
         String album = "";
         String durationLabel = "--:--";
         String coverUrl = "";
-        artist = "USB\u97f3\u4e50";
+        artist = getString(R.string.usb_artist);
         MediaMetadataRetriever retriever = new MediaMetadataRetriever();
         try {
             retriever.setDataSource(file.getAbsolutePath());
@@ -2902,15 +3559,32 @@ public class MainActivity extends AppCompatActivity {
             }
             String hash = Integer.toHexString(sourceFile.getAbsolutePath().hashCode());
             File coverFile = new File(coverDir, hash + ".jpg");
-            if (coverFile.exists() && coverFile.length() == pictureData.length) {
+            if (coverFile.exists() && coverFile.length() > 0) {
                 return Uri.fromFile(coverFile).toString();
             }
-            java.io.FileOutputStream fos = new java.io.FileOutputStream(coverFile);
+            // 先读取图片尺寸，计算采样率，避免直接解码超大封面导致内存占用过高
+            BitmapFactory.Options bounds = new BitmapFactory.Options();
+            bounds.inJustDecodeBounds = true;
+            BitmapFactory.decodeByteArray(pictureData, 0, pictureData.length, bounds);
+            int maxEdge = Math.max(bounds.outWidth, bounds.outHeight);
+            int inSampleSize = 1;
+            while (maxEdge / inSampleSize > USB_COVER_MAX_EDGE_PX) {
+                inSampleSize *= 2;
+            }
+            BitmapFactory.Options decodeOpts = new BitmapFactory.Options();
+            decodeOpts.inSampleSize = inSampleSize;
+            Bitmap cover = BitmapFactory.decodeByteArray(pictureData, 0, pictureData.length, decodeOpts);
+            if (cover == null) {
+                return "";
+            }
+            FileOutputStream fos = new FileOutputStream(coverFile);
             try {
-                fos.write(pictureData);
+                // 统一转成 JPEG 并压缩，减少缓存体积与加载时间
+                cover.compress(Bitmap.CompressFormat.JPEG, USB_COVER_JPEG_QUALITY, fos);
                 fos.flush();
             } finally {
                 fos.close();
+                cover.recycle();
             }
             return Uri.fromFile(coverFile).toString();
         } catch (Exception ignored) {
@@ -2933,64 +3607,134 @@ public class MainActivity extends AppCompatActivity {
     private List<File> findUsbRoots() {
         List<File> roots = new ArrayList<>();
         List<String> seenPaths = new ArrayList<>();
-        String[] usbPathCandidates = {
-                "/storage", "/mnt/usb", "/storage/usb", "/storage/usbdisk0",
-                "/storage/usbdisk1", "/storage/usb0", "/storage/usb1",
-                "/media/usb0", "/media/usb1", "/mnt/usb0", "/mnt/usb1",
-                "/mnt/media_rw/usb0", "/mnt/media_rw/usb1",
-                "/mnt/runtime/default/usb"
-        };
-        for (String candidatePath : usbPathCandidates) {
-            File dir = new File(candidatePath);
-            if (!dir.isDirectory() || !dir.canRead()) {
-                continue;
-            }
-            String path = dir.getAbsolutePath();
-            if (seenPaths.contains(path)) {
-                continue;
-            }
-            seenPaths.add(path);
-            if ("/storage".equals(candidatePath)) {
-                File[] children = dir.listFiles();
-                if (children != null) {
-                    for (File child : children) {
-                        if (child == null || !child.isDirectory() || !child.canRead()) {
-                            continue;
-                        }
-                        String name = child.getName();
-                        if ("emulated".equals(name) || "self".equals(name)) {
-                            continue;
-                        }
-                        String childPath = child.getAbsolutePath();
-                        if (!seenPaths.contains(childPath)) {
-                            seenPaths.add(childPath);
-                            roots.add(child);
+
+        // 方式一：使用 StorageManager API 获取系统识别的可移动存储卷（主要方式）
+        if (storageManager != null) {
+            try {
+                List<StorageVolume> volumes = storageManager.getStorageVolumes();
+                if (volumes != null) {
+                    for (StorageVolume volume : volumes) {
+                        try {
+                            // 跳过内置存储（emulated），只关注物理可移动存储
+                            if (volume.isEmulated()) {
+                                continue;
+                            }
+                            String state = volume.getState();
+                            // 只处理已挂载或可移除的卷
+                            if (!Environment.MEDIA_MOUNTED.equals(state)
+                                    && !Environment.MEDIA_REMOVED.equals(state)) {
+                                continue;
+                            }
+                            File directory = getStorageVolumeDirectory(volume);
+                            if (directory != null && directory.isDirectory() && directory.canRead()) {
+                                String path = directory.getAbsolutePath();
+                                if (!seenPaths.contains(path)) {
+                                    seenPaths.add(path);
+                                    roots.add(directory);
+                                    Log.d(TAG, "USB检测[StorageManager]: volume=" + volume.getDescription(this)
+                                            + " path=" + path + " state=" + state);
+                                }
+                            }
+                        } catch (Exception e) {
+                            Log.w(TAG, "USB检测[StorageManager] volume遍历异常: " + e.getMessage());
                         }
                     }
                 }
-            } else {
-                roots.add(dir);
+            } catch (Exception e) {
+                Log.w(TAG, "USB检测[StorageManager] 获取存储卷失败: " + e.getMessage());
             }
+        } else {
+            Log.w(TAG, "USB检测[StorageManager] storageManager为null，回退到路径扫描");
         }
-        File storage = new File("/storage");
-        File[] storageChildren = storage.listFiles();
-        if (storageChildren != null) {
-            for (File candidate : storageChildren) {
-                if (candidate == null || !candidate.isDirectory() || !candidate.canRead()) {
+
+        // 方式二：回退方案，扫描硬编码路径候选列表
+        if (roots.isEmpty()) {
+            String[] usbPathCandidates = {
+                    "/storage", "/mnt/usb", "/storage/usb", "/storage/usbdisk0",
+                    "/storage/usbdisk1", "/storage/usb0", "/storage/usb1",
+                    "/media/usb0", "/media/usb1", "/mnt/usb0", "/mnt/usb1",
+                    "/mnt/media_rw/usb0", "/mnt/media_rw/usb1",
+                    "/mnt/runtime/default/usb"
+            };
+            for (String candidatePath : usbPathCandidates) {
+                File dir = new File(candidatePath);
+                if (!dir.isDirectory() || !dir.canRead()) {
                     continue;
                 }
-                String name = candidate.getName();
-                if ("emulated".equals(name) || "self".equals(name)) {
+                String path = dir.getAbsolutePath();
+                if (seenPaths.contains(path)) {
                     continue;
                 }
-                String path = candidate.getAbsolutePath();
-                if (!seenPaths.contains(path)) {
-                    seenPaths.add(path);
-                    roots.add(candidate);
+                seenPaths.add(path);
+                if ("/storage".equals(candidatePath)) {
+                    File[] children = dir.listFiles();
+                    if (children != null) {
+                        for (File child : children) {
+                            if (child == null || !child.isDirectory() || !child.canRead()) {
+                                continue;
+                            }
+                            String name = child.getName();
+                            if ("emulated".equals(name) || "self".equals(name)) {
+                                continue;
+                            }
+                            String childPath = child.getAbsolutePath();
+                            if (!seenPaths.contains(childPath)) {
+                                seenPaths.add(childPath);
+                                roots.add(child);
+                            }
+                        }
+                    }
+                } else {
+                    roots.add(dir);
                 }
             }
+            // 二次扫描 /storage 目录，确保无遗漏
+            File storage = new File("/storage");
+            File[] storageChildren = storage.listFiles();
+            if (storageChildren != null) {
+                for (File candidate : storageChildren) {
+                    if (candidate == null || !candidate.isDirectory() || !candidate.canRead()) {
+                        continue;
+                    }
+                    String name = candidate.getName();
+                    if ("emulated".equals(name) || "self".equals(name)) {
+                        continue;
+                    }
+                    String path = candidate.getAbsolutePath();
+                    if (!seenPaths.contains(path)) {
+                        seenPaths.add(path);
+                        roots.add(candidate);
+                    }
+                }
+            }
+            if (!roots.isEmpty()) {
+                Log.d(TAG, "USB检测[路径回退]: 找到 " + roots.size() + " 个路径");
+            }
         }
+
         return roots;
+    }
+
+    /**
+     * 通过反射获取 StorageVolume 的目录路径
+     * API 30+ 可直接使用 getDirectory()，低版本通过反射获取挂载点
+     */
+    private File getStorageVolumeDirectory(StorageVolume volume) {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                // Android 11 (API 30+)：StorageVolume.getDirectory() 直接返回目录
+                return volume.getDirectory();
+            }
+            // 低版本：通过反射获取挂载点路径
+            Method getPathMethod = StorageVolume.class.getMethod("getPath");
+            String path = (String) getPathMethod.invoke(volume);
+            if (path != null && !path.isEmpty()) {
+                return new File(path);
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "USB检测 StorageVolume路径获取失败: " + e.getMessage());
+        }
+        return null;
     }
 
     private boolean isSupportedUsbAudioFile(File file) {
@@ -3022,61 +3766,58 @@ public class MainActivity extends AppCompatActivity {
             if (read < 4) {
                 return false;
             }
-            if (read >= 3 && header[0] == 'I' && header[1] == 'D' && header[2] == '3') {
+            String fileName = file.getName().toLowerCase();
+
+            // MP3（含 ID3v1/v2 标签）
+            if (header[0] == 'I' && header[1] == 'D' && header[2] == '3') {
                 return true;
             }
-            if (read >= 4 && header[0] == 'R' && header[1] == 'I' && header[2] == 'F' && header[3] == 'F') {
+            // WAV / AIFF / OGG（RIFF 变体）
+            if (header[0] == 'R' && header[1] == 'I' && header[2] == 'F' && header[3] == 'F') {
                 if (read >= 12) {
                     String format = new String(header, 8, 4, "US-ASCII");
                     return "WAVE".equals(format) || "AIFF".equals(format) || "OGGS".equals(format);
                 }
                 return true;
             }
-            if (read >= 4 && header[0] == 'f' && header[1] == 'L' && header[2] == 'a' && header[3] == 'C') {
+            // FLAC
+            if (header[0] == 'f' && header[1] == 'L' && header[2] == 'a' && header[3] == 'C') {
                 return true;
             }
+            // MP4 容器（M4A/M4B/AAC-LC/Opus）：ftyp
             if (read >= 8 && header[4] == 'f' && header[5] == 't' && header[6] == 'y' && header[7] == 'p') {
                 return true;
             }
-            if (read >= 3 && header[0] == 'O' && header[1] == 'g' && header[2] == 'g') {
+            // OGG（Vorbis/Opus）
+            if (header[0] == 'O' && header[1] == 'g' && header[2] == 'g') {
                 return true;
             }
-            if (read >= 4 && header[0] == '0' && header[1] == '0' && header[2] == '0' && header[3] == '1') {
-                String name = file.getName().toLowerCase();
-                return name.endsWith(".ape");
+            // APE（Monkey's Audio）：魔数 "MAC "
+            if (header[0] == 'M' && header[1] == 'A' && header[2] == 'C' && header[3] == ' ') {
+                return true;
             }
-            if (read >= 4 && (header[0] == 'P' && header[1] == 'K')) {
+            // WMA（ASF 容器）GUID 头：30 26 B2 75 8E 66 CF 11 A6 D9 00 AA 00 62 CE 6C
+            if (read >= 8
+                    && (header[0] & 0xFF) == 0x30 && (header[1] & 0xFF) == 0x26
+                    && (header[2] & 0xFF) == 0xB2 && (header[3] & 0xFF) == 0x75
+                    && (header[4] & 0xFF) == 0x8E && (header[5] & 0xFF) == 0x66
+                    && (header[6] & 0xFF) == 0xCF && (header[7] & 0xFF) == 0x11) {
+                return true;
+            }
+            // 压缩包（ZIP/JAR 等）明确拒绝
+            if (header[0] == 'P' && header[1] == 'K') {
                 return false;
             }
-            if (read >= 4 && (header[0] == 'P' && header[1] == 'K')) {
-                return false;
+            // AAC 裸流（ADTS）：12 位同步字 0xFFF
+            if (fileName.endsWith(".aac")) {
+                return (header[0] & 0xFF) == 0xFF && (header[1] & 0xF0) == 0xF0;
             }
-            String fileName = file.getName().toLowerCase();
-            if (fileName.endsWith(".m4a") || fileName.endsWith(".m4b")
-                    || fileName.endsWith(".aac") || fileName.endsWith(".opus")) {
-                return read >= 8 && header[4] == 'f' && header[5] == 't' && header[6] == 'y' && header[7] == 'p';
-            }
+            // MPEG 音频 L1/L2/L3（MP3/MP2/MP1/MPEG/MPG）：11 位同步字 0xFFE
             if (fileName.endsWith(".mp3") || fileName.endsWith(".mp2") || fileName.endsWith(".mp1")
                     || fileName.endsWith(".mpeg") || fileName.endsWith(".mpg")) {
-                return read >= 3 && (header[0] == 'I' && header[1] == 'D' && header[2] == '3'
-                        || (header[0] & 0xFF) == 0xFF && (header[1] & 0xE0) == 0xE0);
+                return (header[0] & 0xFF) == 0xFF && (header[1] & 0xE0) == 0xE0;
             }
-            if (fileName.endsWith(".flac")) {
-                return read >= 4 && header[0] == 'f' && header[1] == 'L' && header[2] == 'a' && header[3] == 'C';
-            }
-            if (fileName.endsWith(".wav")) {
-                return read >= 12 && header[0] == 'R' && header[1] == 'I' && header[2] == 'F' && header[3] == 'F'
-                        && header[8] == 'W' && header[9] == 'A' && header[10] == 'V' && header[11] == 'E';
-            }
-            if (fileName.endsWith(".ogg")) {
-                return read >= 3 && header[0] == 'O' && header[1] == 'g' && header[2] == 'g';
-            }
-            if (fileName.endsWith(".ape")) {
-                return read >= 4 && header[0] == '0' && header[1] == '0' && header[2] == '0' && header[3] == '1';
-            }
-            if (fileName.endsWith(".wma")) {
-                return read >= 4 && header[0] == 'R' && header[1] == 'I' && header[2] == 'F' && header[3] == 'F';
-            }
+            // 其余白名单扩展名（DSF/DFF/TTA/TAK/WV/MID 等）：仅长度兜底
             return read >= 4;
         } catch (Exception e) {
             return false;
@@ -3093,12 +3834,12 @@ public class MainActivity extends AppCompatActivity {
             JSONObject result = new JSONObject();
             result.put("connected", true);
             result.put("scanning", true);
-            result.put("message", "USB \u8bfb\u53d6\u4e2d");
+            result.put("message", getString(R.string.usb_msg_reading));
             result.put("folders", new JSONArray());
             result.put("tracks", new JSONArray());
             return result.toString();
         } catch (Exception ignored) {
-            return "{\"connected\":true,\"scanning\":true,\"message\":\"USB 读取中\",\"folders\":[],\"tracks\":[]}";
+            return "{\"connected\":true,\"scanning\":true,\"message\":\"USB reading\",\"folders\":[],\"tracks\":[]}";
         }
     }
 
@@ -3112,7 +3853,7 @@ public class MainActivity extends AppCompatActivity {
             result.put("tracks", new JSONArray());
             return result.toString();
         } catch (Exception ignored) {
-            return "{\"connected\":false,\"scanning\":false,\"message\":\"USB设备未连接\",\"folders\":[],\"tracks\":[]}";
+            return "{\"connected\":false,\"scanning\":false,\"message\":\"USB device not connected\",\"folders\":[],\"tracks\":[]}";
         }
     }
 
@@ -3126,7 +3867,7 @@ public class MainActivity extends AppCompatActivity {
             result.put("tracks", new JSONArray());
             return result.toString();
         } catch (Exception ignored) {
-            return createUsbDisconnectedJson("\u65e0\u6cd5\u8bc6\u522b\u6b64\u8bbe\u5907");
+            return createUsbDisconnectedJson(getString(R.string.usb_msg_cannot_identify));
         }
     }
 
@@ -3368,41 +4109,45 @@ public class MainActivity extends AppCompatActivity {
         return new File(dir, safeKey + ".audio");
     }
 
-    private static class UsbFolderBucket {
+    private class UsbFolderBucket {
         final String path;
         final String name;
         final JSONArray tracks = new JSONArray();
 
         UsbFolderBucket(String path, String name) {
             this.path = path;
-            this.name = name == null || name.trim().isEmpty() ? "\u6839\u76ee\u5f55" : name;
+            this.name = name == null || name.trim().isEmpty() ? getString(R.string.usb_root_dir_name) : name;
         }
     }
 
+    /**
+     * JS-Native桥接内部类，暴露给WebView中JavaScript调用的原生接口
+     * 所有@JavascriptInterface方法均可在Web页面中通过window.MusicBridge.xxx()调用
+     */
     private class MusicBridge {
-        @JavascriptInterface
+        @JavascriptInterface // 设置状态栏主题（深色/浅色）
         public void setStatusBarTheme(String theme) {
             boolean lightBackground = "light".equals(theme) || "light-background".equals(theme);
             runOnUiThread(() -> applyStatusBarTheme(lightBackground));
         }
 
-        @JavascriptInterface
+        @JavascriptInterface // 获取USB音乐当前状态JSON
         public String getUsbMusicState() {
             return usbMusicStateJson;
         }
 
-        @JavascriptInterface
+        @JavascriptInterface // 触发USB音乐扫描
         public String scanUsbMusic() {
             startUsbScanAsync();
             return usbMusicStateJson;
         }
 
-        @JavascriptInterface
+        @JavascriptInterface // 获取蓝牙当前状态JSON
         public String getBluetoothState() {
             return bluetoothStateJson();
         }
 
-        @JavascriptInterface
+        @JavascriptInterface // 刷新蓝牙状态（重新获取Profile代理、检查已连接设备）
         public String refreshBluetoothState() {
             ensureA2dpProxy();
             checkSystemConnectedBluetoothDevices();
@@ -3410,7 +4155,7 @@ public class MainActivity extends AppCompatActivity {
             return bluetoothStateJson();
         }
 
-        @JavascriptInterface
+        @JavascriptInterface // 获取蓝牙状态详情（含连接指标和播放状态）
         public String getBluetoothStatusDetail() {
             JSONObject result = new JSONObject();
             try {
@@ -3423,25 +4168,25 @@ public class MainActivity extends AppCompatActivity {
             return result.toString();
         }
 
-        @JavascriptInterface
+        @JavascriptInterface // 清除蓝牙错误状态
         public String clearBluetoothErrorState() {
             clearBluetoothError();
             setBluetoothConnectionState(BT_STATE_IDLE);
             return statusJson(true, "错误状态已清除");
         }
 
-        @JavascriptInterface
+        @JavascriptInterface // 取消蓝牙自动重连
         public String cancelBluetoothReconnect() {
             clearAllBluetoothAutoReconnect();
             return statusJson(true, "已取消自动重连");
         }
 
-        @JavascriptInterface
+        @JavascriptInterface // 获取蓝牙连接指标（成功率、耗时等）
         public String getBluetoothConnectionMetrics() {
             return bluetoothConnectionMetricsJson();
         }
 
-        @JavascriptInterface
+        @JavascriptInterface // 获取所有已知蓝牙设备列表
         public String getBluetoothDevices() {
             JSONArray result = new JSONArray();
             try {
@@ -3465,17 +4210,17 @@ public class MainActivity extends AppCompatActivity {
             return result.toString();
         }
 
-        @JavascriptInterface
+        @JavascriptInterface // 获取已配对蓝牙设备列表
         public String getPairedBluetoothDevices() {
             return getBluetoothDevices();
         }
 
-        @JavascriptInterface
+        @JavascriptInterface // 开始蓝牙设备搜索
         public String startBluetoothDiscovery() {
             return startBluetoothDiscoveryInternal();
         }
 
-        @JavascriptInterface
+        @JavascriptInterface // 配对指定蓝牙设备
         public String pairBluetoothDevice(String address) {
             BluetoothDevice device = getRemoteDevice(address);
             if (device == null) {
@@ -3499,7 +4244,7 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
-        @JavascriptInterface
+        @JavascriptInterface // 连接指定蓝牙设备
         public String connectBluetoothDevice(String address) {
             BluetoothDevice device = getRemoteDevice(address);
             if (device == null) {
@@ -3524,7 +4269,7 @@ public class MainActivity extends AppCompatActivity {
             return statusJson(true, "\u8bf7\u5728\u7cfb\u7edf\u84dd\u7259\u8bbe\u7f6e\u4e2d\u70b9\u51fb\u8bbe\u5907\u5f00\u542f\"\u5a92\u4f53\u97f3\u9891\"\u5f00\u5173");
         }
 
-        @JavascriptInterface
+        @JavascriptInterface // 断开指定蓝牙设备
         public String disconnectBluetoothDevice(String address) {
             BluetoothDevice device = getRemoteDevice(address);
             if (device == null) {
@@ -3545,7 +4290,7 @@ public class MainActivity extends AppCompatActivity {
             return statusJson(true, "\u8bf7\u5728\u7cfb\u7edf\u84dd\u7259\u8bbe\u7f6e\u4e2d\u5173\u95ed\u8bbe\u7f6e\u7684\"\u5a92\u4f53\u97f3\u9891\"\u5f00\u5173");
         }
 
-        @JavascriptInterface
+        @JavascriptInterface // 断开所有蓝牙设备
         public String disconnectAllBluetoothDevices() {
             if (bluetoothAdapter == null || !bluetoothAdapter.isEnabled()) {
                 return statusJson(false, "\u84dd\u7259\u672a\u5f00\u542f");
@@ -3562,7 +4307,7 @@ public class MainActivity extends AppCompatActivity {
             return statusJson(true, "\u8bf7\u5728\u7cfb\u7edf\u84dd\u7259\u8bbe\u7f6e\u4e2d\u5173\u95ed\u8bbe\u5907\u7684\"\u5a92\u4f53\u97f3\u9891\"\u5f00\u5173");
         }
 
-        @JavascriptInterface
+        @JavascriptInterface // 发送蓝牙媒体控制命令（play/pause/next/prev等）
         public String sendBluetoothMediaCommand(String command) {
             if (getConnectedA2dpDeviceCount() <= 0) {
                 return statusJson(false, "\u84dd\u7259\u97f3\u9891\u8bbe\u5907\u5c1a\u672a\u7a33\u5b9a\u8fde\u63a5\uff0c\u8bf7\u5148\u5b8c\u6210\u8fde\u63a5\u540e\u518d\u64ad\u653e");
@@ -3589,27 +4334,27 @@ public class MainActivity extends AppCompatActivity {
             return statusJson(true, "已发送蓝牙媒体控制指令：" + command);
         }
 
-        @JavascriptInterface
+        @JavascriptInterface // 获取蓝牙播放状态（播放/暂停/曲目信息等）
         public String getBluetoothPlaybackState() {
             return bluetoothPlaybackStateJson();
         }
 
-        @JavascriptInterface
+        @JavascriptInterface // 设置蓝牙媒体音量
         public String setBluetoothVolume(float volume) {
             return setMediaStreamVolume(volume);
         }
 
-        @JavascriptInterface
+        @JavascriptInterface // 设置媒体音量
         public String setMediaVolume(float volume) {
             return setMediaStreamVolume(volume);
         }
 
-        @JavascriptInterface
+        @JavascriptInterface // 更新本地播放通知（曲目信息和播放状态）
         public void updateLocalPlaybackState(String title, String artist, boolean playing) {
             updateLocalPlaybackNotification(title, artist, playing);
         }
 
-        @JavascriptInterface
+        @JavascriptInterface // 准备蓝牙音频路由
         public String prepareBluetoothAudioRoute() {
             prepareBluetoothMusicRoute();
             int connectedCount = getConnectedA2dpDeviceCount();
@@ -3618,7 +4363,7 @@ public class MainActivity extends AppCompatActivity {
                             ? "\u84dd\u7259\u626c\u58f0\u5668\u8def\u7531\u5df2\u51c6\u5907"
                             : "\u672a\u68c0\u6d4b\u5230\u5df2\u8fde\u63a5\u7684\u84dd\u7259\u97f3\u9891\u8bbe\u5907");
         }
-        @JavascriptInterface
+        @JavascriptInterface // 设置当前活跃的音频模块（local/bluetooth）
         public void setActiveAudioModule(String module) {
             activeAudioModule = module == null ? "" : module;
             if ("bluetooth".equals(module)) {
@@ -3628,7 +4373,7 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
-        @JavascriptInterface
+        @JavascriptInterface // 获取离线收音机能力状态检测结果
         public String getOfflineRadioState() {
             JSONObject result = new JSONObject();
             try {
@@ -3647,7 +4392,7 @@ public class MainActivity extends AppCompatActivity {
             return result.toString();
         }
 
-        @JavascriptInterface
+        @JavascriptInterface // 扫描离线FM广播电台（当前系统不支持，返回空列表）
         public String scanOfflineRadioStations(String band) {
             JSONObject result = new JSONObject();
             try {
@@ -3660,7 +4405,7 @@ public class MainActivity extends AppCompatActivity {
             return result.toString();
         }
 
-        @JavascriptInterface
+        @JavascriptInterface // 启动离线FM播放（当前系统不支持）
         public String startOfflineRadio(String band, double frequency, float volume) {
             JSONObject result = new JSONObject();
             try {
@@ -3672,28 +4417,28 @@ public class MainActivity extends AppCompatActivity {
             return result.toString();
         }
 
-        @JavascriptInterface
+        @JavascriptInterface // 停止离线FM播放（预留接口）
         public void stopOfflineRadio() {
             // Reserved for devices or ROM builds that expose a real FM HAL bridge.
         }
 
-        @JavascriptInterface
+        @JavascriptInterface // 设置离线FM音量（预留接口）
         public void setOfflineRadioVolume(float volume) {
             // Reserved for devices or ROM builds that expose a real FM HAL bridge.
         }
 
-        @JavascriptInterface
+        @JavascriptInterface // 打开系统蓝牙设置页面
         public void openBluetoothSettings() {
             MainActivity.this.openBluetoothSettings();
         }
 
-        @JavascriptInterface
+        @JavascriptInterface // 获取本地持久化的USB收藏列表
         public String getPersistedFavorites() {
             loadPersistedFavorites();
             return getPersistedFavoritesAsJson().toString();
         }
 
-        @JavascriptInterface
+        @JavascriptInterface // 添加收藏到本地存储
         public String addFavoriteTrack(
                 String trackPath, String artist, String title,
                 String album, String fileSize, String durationLabel, String coverUrl
@@ -3709,7 +4454,7 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
-        @JavascriptInterface
+        @JavascriptInterface // 从本地存储中移除收藏
         public String removeFavoriteTrack(String artist, String title) {
             try {
                 boolean removed = removeFavoriteFromStorage(artist, title);
@@ -3721,11 +4466,251 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
-        @JavascriptInterface
+        @JavascriptInterface // 同步USB扫描结果与本地收藏
         public String syncFavoritesWithUsb() {
             String state = usbMusicStateJson;
             new Thread(() -> syncFavoritesAfterScan(state), "UsbFavSync").start();
             return "{\"success\":true}";
+        }
+
+        @JavascriptInterface // 启动系统车载收音机Activity（通过标准显式Intent，支持嵌入式bounds）
+        public String launchSystemRadio(int left, int top, int right, int bottom) {
+            return MainActivity.this.launchCarRadioActivity(left, top, right, bottom);
+        }
+
+        @JavascriptInterface // 将应用MainActivity拉回前台（用于切换离开收音机模块时覆盖收音机Activity）
+        public String bringAppToFront() {
+            return MainActivity.this.bringMainActivityToFront();
+        }
+
+        @JavascriptInterface // 显示悬浮tab栏（覆盖在系统收音机Activity之上，保持tab栏可见可点击）
+        public void showRadioTabOverlay(int left, int top, int right, int bottom,
+                                        int lightTheme, String labelBt, String labelRadio, String labelUsb) {
+            final String[] labels = {labelBt, labelRadio, labelUsb};
+            runOnUiThread(() -> MainActivity.this.showRadioTabOverlay(
+                    left, top, right, bottom, lightTheme == 1, labels));
+        }
+
+        @JavascriptInterface // 隐藏悬浮tab栏
+        public void hideRadioTabOverlay() {
+            runOnUiThread(MainActivity.this::hideRadioTabOverlay);
+        }
+
+        // =============================================
+        // USB 扫描调试接口（开发测试用，发布时可移除）
+        // =============================================
+
+        @JavascriptInterface // 测试USB扫描：直接在后台线程中模拟扫描流程，返回JSON结果
+        public String testUsbScan() {
+            Log.d(TAG, "[USB测试] 开始模拟USB扫描...");
+
+            // 检查是否存在可用于测试的真实文件目录
+            File testRoot = null;
+            String[] candidates = {
+                    "/sdcard/Music",
+                    "/mnt/sdcard/Music",
+                    "/storage/emulated/0/Music",
+                    "/sdcard/Download"
+            };
+            for (String path : candidates) {
+                File dir = new File(path);
+                if (dir.isDirectory() && dir.canRead() && dir.listFiles() != null && dir.listFiles().length > 0) {
+                    // 检查是否有音频文件
+                    File[] files = dir.listFiles();
+                    if (files != null) {
+                        for (File f : files) {
+                            if (f.isFile() && isSupportedUsbAudioFile(f)) {
+                                testRoot = dir;
+                                break;
+                            }
+                        }
+                    }
+                    if (testRoot != null) break;
+                }
+            }
+
+            if (testRoot != null) {
+                // 真实文件扫描：找到测试目录，使用真实文件扫描
+                Log.d(TAG, "[USB测试] 发现测试目录: " + testRoot.getAbsolutePath() + "，使用真实文件扫描");
+                final File scanRoot = testRoot;
+                final int scanToken = ++usbScanToken;
+                usbScanning = true;
+
+                // 异步执行真实扫描
+                new Thread(() -> {
+                    String state = scanUsbMusicNow();
+                    if (scanToken != usbScanToken) return;
+                    usbScanning = false;
+                    usbMusicStateJson = state;
+
+                    // 推送结果给前端
+                    try {
+                        JSONObject event = new JSONObject();
+                        event.put("type", "scan_completed");
+                        event.put("message", getString(R.string.usb_msg_scan_complete));
+                        String script = "window.onNativeUsbEvent&&window.onNativeUsbEvent("
+                                + JSONObject.quote(event.toString()) + ");";
+                        musicWebView.post(() -> evaluatePlayerScript(script));
+                    } catch (Exception e) {
+                        Log.e(TAG, "[USB测试] 推送结果失败", e);
+                    }
+                    Log.d(TAG, "[USB测试] 真实扫描完成，结果已推送");
+                }, "UsbTestScanner").start();
+
+                return "{\"success\":true, \"message\":\"已在 " + testRoot.getAbsolutePath() + " 目录启动真实扫描\"}";
+            } else {
+                // 使用模拟数据：构造完整的扫描结果JSON
+                Log.d(TAG, "[USB测试] 未找到测试目录，使用模拟数据");
+                try {
+                    JSONObject result = new JSONObject();
+                    result.put("connected", true);
+                    result.put("scanning", false);
+                    result.put("label", "TEST_USB");
+                    result.put("uuid", "TEST_USB");
+                    result.put("id", "TEST_USB:TEST_USB");
+                    result.put("message", "扫描完成（模拟数据），共发现 6 首音乐");
+
+                    // 构造文件夹数据
+                    JSONArray folders = new JSONArray();
+
+                    // Folder 1: Rock
+                    JSONObject rockFolder = new JSONObject();
+                    rockFolder.put("path", "/mnt/usb/TEST_USB/Rock");
+                    rockFolder.put("name", "Rock");
+                    rockFolder.put("thumbnail", "🎸");
+                    JSONArray rockTracks = new JSONArray();
+                    rockTracks.put(createMockTrack("track_001", "Bohemian Rhapsody", "Queen",
+                            "A Night at the Opera", "mp3", 5242880, 354000, "5:54",
+                            "/mnt/usb/TEST_USB/Rock"));
+                    rockTracks.put(createMockTrack("track_002", "Hotel California", "Eagles",
+                            "Hotel California", "flac", 31457280, 391000, "6:31",
+                            "/mnt/usb/TEST_USB/Rock"));
+                    rockFolder.put("tracks", rockTracks);
+                    folders.put(rockFolder);
+
+                    // Folder 2: Pop
+                    JSONObject popFolder = new JSONObject();
+                    popFolder.put("path", "/mnt/usb/TEST_USB/Pop");
+                    popFolder.put("name", "Pop Hits 2024");
+                    popFolder.put("thumbnail", "🎵");
+                    JSONArray popTracks = new JSONArray();
+                    popTracks.put(createMockTrack("track_003", "Blinding Lights", "The Weeknd",
+                            "After Hours", "aac", 3145728, 200000, "3:20",
+                            "/mnt/usb/TEST_USB/Pop"));
+                    popTracks.put(createMockTrack("track_004", "Shape of You", "Ed Sheeran",
+                            "Divide", "m4a", 4194304, 233000, "3:53",
+                            "/mnt/usb/TEST_USB/Pop"));
+                    popFolder.put("tracks", popTracks);
+                    folders.put(popFolder);
+
+                    // Folder 3: Jazz
+                    JSONObject jazzFolder = new JSONObject();
+                    jazzFolder.put("path", "/mnt/usb/TEST_USB/Jazz");
+                    jazzFolder.put("name", "Jazz Classics");
+                    jazzFolder.put("thumbnail", "🎷");
+                    JSONArray jazzTracks = new JSONArray();
+                    jazzTracks.put(createMockTrack("track_005", "Take Five", "Dave Brubeck",
+                            "Time Out", "wav", 47185920, 324000, "5:24",
+                            "/mnt/usb/TEST_USB/Jazz"));
+                    jazzTracks.put(createMockTrack("track_006", "So What", "Miles Davis",
+                            "Kind of Blue", "ogg", 5242880, 481000, "8:01",
+                            "/mnt/usb/TEST_USB/Jazz"));
+                    jazzFolder.put("tracks", jazzTracks);
+                    folders.put(jazzFolder);
+
+                    result.put("folders", folders);
+
+                    // 构造完整tracks列表
+                    JSONArray allTracks = new JSONArray();
+                    for (int i = 0; i < folders.length(); i++) {
+                        JSONObject folder = folders.getJSONObject(i);
+                        JSONArray tracks = folder.getJSONArray("tracks");
+                        for (int j = 0; j < tracks.length(); j++) {
+                            allTracks.put(tracks.getJSONObject(j));
+                        }
+                    }
+                    result.put("tracks", allTracks);
+
+                    // 保存结果并推送到前端
+                    usbMusicStateJson = result.toString();
+                    usbScanning = false;
+
+                    // 构造scan_completed事件推送到前端
+                    JSONObject event = new JSONObject();
+                    event.put("type", "scan_completed");
+                    event.put("message", "扫描完成（模拟数据），共发现 " + allTracks.length() + " 首音乐");
+                    final String eventJson = event.toString();
+                    musicWebView.post(() -> {
+                        String script = "window.onNativeUsbEvent&&window.onNativeUsbEvent("
+                                + JSONObject.quote(eventJson) + ");";
+                        evaluatePlayerScript(script);
+                    });
+
+                    Log.d(TAG, "[USB测试] 模拟数据已生成并推送到前端，共 " + allTracks.length() + " 首歌曲");
+                    return "{\"success\":true, \"message\":\"模拟USB扫描完成，已推送 " + allTracks.length() + " 首歌曲到前端\"}";
+
+                } catch (Exception e) {
+                    Log.e(TAG, "[USB测试] 构造模拟数据失败", e);
+                    return "{\"success\":false, \"message\":\"构造模拟数据失败: " + e.getMessage() + "\"}";
+                }
+            }
+        }
+
+        @JavascriptInterface // 清除测试USB数据
+        public String clearTestUsbData() {
+            // 发送disconnected事件给前端
+            try {
+                JSONObject event = new JSONObject();
+                event.put("type", "disconnected");
+                event.put("message", "模拟U盘已拔出");
+                String script = "window.onNativeUsbEvent&&window.onNativeUsbEvent("
+                        + JSONObject.quote(event.toString()) + ");";
+                musicWebView.post(() -> evaluatePlayerScript(script));
+            } catch (Exception ignored) {
+            }
+            return "已清除测试USB数据";
+        }
+
+        @JavascriptInterface // 音乐律动氛围灯RGBA上报（Web端FFT分析后调用，频率→颜色，能量→亮度）
+        public void setAmbientLightRGBA(int r, int g, int b, int a) {
+            try {
+                // 钳制到合法范围 0~255，避免越界值导致硬件异常
+                int cr = Math.max(0, Math.min(255, r));
+                int cg = Math.max(0, Math.min(255, g));
+                int cb = Math.max(0, Math.min(255, b));
+                int ca = Math.max(0, Math.min(255, a));
+                Log.d(TAG, "音乐律动氛围灯RGBA: (" + cr + "," + cg + "," + cb + "," + ca + ")");
+                // TODO: 在此接入车端氛围灯硬件控制（如 VHAL 厂商扩展信号 / 系统氛围灯 Service），
+                //       将 RGBA 写入实际硬件。当前仅保留日志便于联调验证，调用失败不抛异常。
+            } catch (Throwable t) {
+                Log.e(TAG, "设置氛围灯RGBA异常", t);
+            }
+        }
+
+        /**
+         * 辅助方法：创建模拟音轨JSON对象
+         */
+        private JSONObject createMockTrack(String id, String title, String artist,
+                                            String album, String ext, long fileSize,
+                                            int durationMs, String durationLabel,
+                                            String folderPath) {
+            try {
+                JSONObject track = new JSONObject();
+                track.put("id", id);
+                track.put("title", title);
+                track.put("artist", artist);
+                track.put("album", album);
+                track.put("path", folderPath + "/" + title + "." + ext);
+                track.put("fileName", title + "." + ext);
+                track.put("fileSize", fileSize);
+                track.put("duration", durationMs);
+                track.put("durationLabel", durationLabel);
+                track.put("folderPath", folderPath);
+                track.put("folderName", new File(folderPath).getName());
+                return track;
+            } catch (Exception e) {
+                return new JSONObject();
+            }
         }
     }
 
@@ -3747,6 +4732,10 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    /**
+     * 监听电话状态变化：
+     * 来电/通话时通知WebView暂停音乐，通话结束后通知恢复
+     */
     private void configurePhoneStateListener() {
         telephonyManager = (TelephonyManager) getSystemService(TELEPHONY_SERVICE);
         if (telephonyManager == null) {
@@ -3791,9 +4780,14 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * 释放所有资源：
+     * 取消蓝牙发现、关闭Profile代理、注销所有广播接收器、销毁WebView、释放电话监听
+     */
     @Override
     protected void onDestroy() {
         hideBluetoothBackOverlay();
+        hideRadioTabOverlay(); // 清理悬浮tab栏
         if (telephonyManager != null && phoneStateListener != null) {
             try {
                 telephonyManager.listen(phoneStateListener, PhoneStateListener.LISTEN_NONE);
@@ -3823,6 +4817,7 @@ public class MainActivity extends AppCompatActivity {
             }
         }
         stopBluetoothConnectionStatusChecker();
+        stopVhalKeySignalPolling();
         if (bluetoothReceiverRegistered) {
             unregisterReceiver(bluetoothReceiver);
             bluetoothReceiverRegistered = false;

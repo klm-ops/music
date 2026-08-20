@@ -1,26 +1,58 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  音乐 - AndroidManifest.xml
+  权限与组件声明说明：
+  1. 存储权限：READ_EXTERNAL_STORAGE / READ_MEDIA_AUDIO - 用于扫描USB音乐文件
+  2. 通知权限：POST_NOTIFICATIONS - 用于显示前台服务通知（含播放控制按钮）
+  3. 前台服务：FOREGROUND_SERVICE / FOREGROUND_SERVICE_MEDIA_PLAYBACK - 音乐后台播放
+  4. 蓝牙权限：BLUETOOTH_CONNECT / BLUETOOTH_SCAN / BLUETOOTH_ADVERTISE - 蓝牙音乐
+  5. 网络权限：INTERNET / ACCESS_NETWORK_STATE - 收音机在线流播放
+  6. 位置权限：ACCESS_COARSE/FINE_LOCATION - 蓝牙扫描在旧系统需要位置权限
+  7. 音频设置：MODIFY_AUDIO_SETTINGS - 控制音频焦点和音量
+  8. 车辆厂商扩展权限：CAR_VENDOR_EXTENSION（权限由系统com.android.car.updatable定义）
+-->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- 使用车辆厂商扩展权限（权限由系统com.android.car.updatable定义） -->
+    <uses-permission android:name="android.car.permission.CAR_VENDOR_EXTENSION" />
+
+    <!-- 存储读取：扫描USB设备中的音乐文件（Android 13以下版本） -->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
+    <!-- 音频媒体读取：Android 13+版本的音频权限 -->
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
+    <!-- 所有文件访问：Android 11+ 直接读取U盘(可移动存储)文件所需，否则 File.listFiles() 无法访问USB挂载点 -->
+    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
+    <!-- 通知权限：Android 13+版本发送前台服务通知 -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- 前台服务基础权限 -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <!-- 媒体播放前台服务类型：确保后台音乐播放不被系统杀死 -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <!-- 音频设置修改：用于音频焦点管理 -->
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <!-- 网络权限：收音机在线流 + WebView加载 -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />  
+    <!-- 粗略位置：旧版Android蓝牙扫描需要 -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" android:maxSdkVersion="30" />
+    <!-- 精确位置：旧版Android蓝牙扫描需要 -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" android:maxSdkVersion="30" />
+    <!-- 蓝牙基础权限：旧版Android -->
     <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
     <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />
+    <!-- 蓝牙连接：Android 12+版本 -->
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <!-- 蓝牙广播（作为A2DP源时需要）：Android 12+版本 -->
     <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
+    <!-- 蓝牙扫描：Android 12+版本，不依赖位置权限 -->
     <uses-permission
         android:name="android.permission.BLUETOOTH_SCAN"
         android:usesPermissionFlags="neverForLocation"
         tools:targetApi="s" />
+    <!-- 系统窗口：用于可能的悬浮窗显示 -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <!-- 电话状态：用于音频焦点处理 -->
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
 
     <application
@@ -34,11 +66,22 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Music"
         android:usesCleartextTraffic="false">
+        <!--
+          音乐播放后台服务
+          - 类型：mediaPlayback（媒体播放前台服务）
+          - 功能：保持应用后台播放、显示播放控制通知栏
+          - 通过ACTION_UPDATE接收播放状态，通过ACTION_CONTROL接收通知栏按钮点击
+        -->
         <service
             android:name=".MusicPlaybackService"
             android:exported="false"
             android:foregroundServiceType="mediaPlayback" />
 
+        <!--
+          主Activity
+          - WebView容器，加载Web播放器H5页面
+          - 处理USB设备连接、蓝牙管理、广播接收器等Native功能
+        -->
         <activity
             android:name=".MainActivity"
             android:exported="true"

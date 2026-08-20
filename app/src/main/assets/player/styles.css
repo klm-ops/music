@@ -1,3 +1,13 @@
+/* ==========================================================================
+   音乐 Web 播放器样式表
+   架构说明：
+   - :root 定义全局CSS变量（颜色、尺寸、阴影等），便于主题切换
+   - 三大音频模块：蓝牙(bluetooth)、收音机(radio)、USB
+   - 组件结构：shell容器 > player-panel主面板 + drawer-panel抽屉面板
+   - 使用CSS变量实现动态主题
+   ========================================================================== */
+
+/* ----------------------------- 全局CSS变量 ----------------------------- */
 :root {
   --bg: #11172a;
   --surface: rgba(24, 32, 58, 0.94);
@@ -65,6 +75,8 @@
   --progress-bg: rgba(255, 255, 255, 0.18);
   --progress-thumb: #fff;
   --progress-thumb-shadow: rgba(255, 255, 255, 0.14);
+  /* 收音机模块配色变量（UI已注释，全部停用。如需恢复收音机界面，取消本段注释） */
+  /*
   --radio-bg: #000;
   --radio-frequency: #fff;
   --radio-frequency-small: rgba(255, 255, 255, 0.68);
@@ -119,6 +131,7 @@
   --radio-controls-icon-hover-bg: rgba(255, 255, 255, 0.15);
   --radio-controls-icon-active-bg: rgba(255, 255, 255, 0.2);
   --radio-controls-icon-filter: invert(0.95) hue-rotate(180deg);
+  */
   --bluetooth-bg: radial-gradient(61.96% 61.96% at 50% 50%, #064A82 0%, #0E0E0E 100%);
   --bluetooth-text: #fff;
   --bluetooth-muted: #bababa;
@@ -153,7 +166,8 @@
   --bluetooth-controls-playing-text: #0e0e0e;
   --bluetooth-controls-playing-shadow: none;
   --bt-fill: 0%;
-  --radio-fill: 51%;
+  /* --radio-fill: 51%; 收音机频率指针位置（UI已注释） */
+  /* ----------------------------- 对话框与弹窗变量 ----------------------------- */
   --dialog-bg: rgba(17, 23, 42, 0.96);
   --dialog-now-playing-bg: rgba(8, 12, 27, 0.42);
   --dialog-summary-bg: rgba(8, 12, 27, 0.36);
@@ -164,21 +178,27 @@
   --bluetooth-track-meta-color: #d8e2ff;
   --bluetooth-track-meta-playing-color: #828282;
   --icon-filter: brightness(0) invert(1);
-  /* Native Android injects the real status-bar inset; CSS env() remains as a browser fallback. */
+  /* ----------------------------- 状态栏与安全区变量 ----------------------------- */
+/* Native Android注入真实状态栏/导航栏inset，CSS env()作为浏览器回退 */
   --native-status-bar-top: 24px;
+  --native-nav-bar-bottom: 0px;
   --status-gap: 8px;
   --status-safe-top: max(18px, calc(env(safe-area-inset-top) + var(--status-gap)), calc(var(--native-status-bar-top) + var(--status-gap)));
+  /* 底部安全区：取 env() 与 Native 注入值的较大值，兼容手势/三键导航且不受 WebView env() 不可靠影响 */
+  --status-safe-bottom: max(0px, env(safe-area-inset-bottom), var(--native-nav-bar-bottom));
   --tabs-block-height: 54px;
   --module-safe-top: calc(var(--status-safe-top) + var(--tabs-block-height));
 
   font-family: Roboto, "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
 }
 
+/* ----------------------------- 基础重置与全局样式 ----------------------------- */
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-html, body { width: 100%; height: 100%; margin: 0; color: var(--text); background-color: var(--bg); background-image: url("./assets/blue-texture.png"); background-size: cover; background-position: center; overflow: hidden; overscroll-behavior: none; }
-body { min-width: 320px; display: flex; justify-content: center; align-items: center; font-size: 16px; line-height: 1.55; }
+html, body { width: 100%; height: 100%; margin: 0; padding: 0; color: var(--text); background-color: var(--bg); background-image: url("./assets/blue-texture.png"); background-size: cover; background-position: center; overflow: hidden; overscroll-behavior: none; }
+body { min-width: 320px; font-size: 16px; line-height: 1.55; }
+main { margin: 0; padding: 0; width: 100%; height: 100%; }
 button, input { font: inherit; }
-button { min-width: 44px; min-height: 44px; border: 0; color: inherit; cursor: pointer; user-select: none; }
+button { min-width: 44px; min-height: 44px; border: 0; color: inherit; cursor: pointer; user-select: none; transition: transform 120ms ease, background-color 160ms ease, color 160ms ease, opacity 160ms ease; }
 button:disabled { cursor: not-allowed; opacity: 0.42; }
 button:focus-visible, input:focus-visible { outline: 3px solid rgba(72, 132, 255, 0.86); outline-offset: 3px; }
 button:active:not(:disabled) { transform: scale(0.96); }
@@ -186,8 +206,8 @@ h1, h2, h3, p { margin: 0; }
 
 .visually-hidden { position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; margin: -1px !important; overflow: hidden !important; clip: rect(0, 0, 0, 0) !important; white-space: nowrap !important; border: 0 !important; }
 
-/* Mobile-first shell: content stays centered and fills the available viewport. */
-.shell { position: relative; width: min(100vw, 1440px); height: 100dvh; min-height: 560px; max-height: 100dvh; margin: 0 auto; overflow: hidden; background: var(--bg); box-shadow: var(--shadow); }
+/* Mobile-first shell: content fills the entire viewport. */
+.shell { position: relative; width: 100%; height: 100dvh; min-height: 560px; max-height: 100dvh; margin: 0; padding: 0; overflow: hidden; background: var(--bg); }
 .player-panel { position: absolute; inset: 0; overflow: hidden; isolation: isolate; background-color: var(--bg); background-image: url("./assets/blue-texture.png"); background-size: cover; background-position: center; }
 .player-panel::before { position: absolute; inset: 0; content: ""; background: rgba(17, 23, 42, 0.82); pointer-events: none; z-index: -1; }
 .module-panel { display: none; }
@@ -201,18 +221,22 @@ h1, h2, h3, p { margin: 0; }
   align-items: center;
   justify-content: center;
 }
+/* ----------------------------- 模块切换与面板显示 ----------------------------- */
+/* 三大音频模块互斥显示，通过body的module-*类控制 */
 body.module-bluetooth .bluetooth-module { display: flex; align-items: center; justify-content: center; }
-body.module-radio .radio-module { display: flex; align-items: center; justify-content: center; }
+/* 收音机模块UI已注释，以下模块显示规则停用 */
+/* body.module-radio .radio-module { display: flex; align-items: center; justify-content: center; } */
 body.module-usb .usb-module { display: block; }
+/* 收音机界面已移除"收藏列表/音乐列表"图标（右侧side-actions） */
 body.module-radio .side-actions { display: none; }
 body.module-bluetooth .side-actions { display: none; }
 
-.tabs { position: absolute; left: max(16px, env(safe-area-inset-left)); right: max(16px, env(safe-area-inset-right)); top: var(--status-safe-top); z-index: 5; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; max-width: 680px; margin: 0 auto; }
+.tabs { position: absolute; left: env(safe-area-inset-left); right: env(safe-area-inset-right); top: var(--status-safe-top); z-index: 5; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; padding: 0 8px; }
 .tab { position: relative; min-height: 44px; padding: 0 8px 8px; border-radius: 14px; color: var(--white-58); background: var(--white-03); font-size: clamp(14px, 4vw, 18px); font-weight: 600; letter-spacing: .04em; }
 .tab.is-active { color: var(--text); background: var(--white-07); }
 .tab.is-active::after { position: absolute; left: 50%; bottom: 5px; width: 44px; height: 5px; content: ""; border-radius: 999px; transform: translateX(-50%); background: var(--blue); }
 
-.hero { position: absolute; left: 16px; right: 16px; top: max(clamp(88px, 13dvh, 132px), calc(var(--module-safe-top) + 12px)); bottom: 380px; display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 24px; text-align: center; }
+.hero { position: absolute; left: 0; right: 0; top: max(clamp(88px, 13dvh, 132px), calc(var(--module-safe-top) + 12px)); bottom: 380px; display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 24px; text-align: center; padding: 0 16px; }
 .hero .album-container { display: flex; flex-direction: column; align-items: center; gap: 16px; }
 .hero .album-wrap { flex-shrink: 0; }
 .hero .track-meta { text-align: center; }
@@ -221,9 +245,9 @@ body.module-bluetooth .side-actions { display: none; }
 
 .visualizer-row {
   position: absolute;
-  left: 16px;
-  right: 16px;
-  bottom: calc(max(18px, env(safe-area-inset-bottom)) + 180px);
+  left: 0;
+  right: 0;
+  bottom: calc(max(18px, var(--status-safe-bottom)) + 180px);
   height: 220px;
   display: flex;
   align-items: center;
@@ -265,7 +289,8 @@ body.has-drawer .side-actions { display: none; }
 .track-action-button:hover, .track-action-button:focus-visible, .track-action-button.is-active { color: var(--white); background: rgba(45,108,223,.22); }
 
 
-.transport { position: absolute; left: 16px; right: 16px; bottom: calc(max(18px, env(safe-area-inset-bottom)) + 55px); display: flex; flex-direction: column; gap: 32px; }
+/* ----------------------------- 传输控制栏（进度条+播放按钮） ----------------------------- */
+.transport { position: absolute; left: 0; right: 0; bottom: calc(max(18px, var(--status-safe-bottom)) + 55px); display: flex; flex-direction: column; gap: 32px; padding: 0 16px; }
 .progress-row { display: grid; grid-template-columns: 42px minmax(0, 1fr) 42px; align-items: center; gap: 10px; color: var(--muted-strong); font-size: 14px; font-variant-numeric: tabular-nums; }
 .progress-row span:first-child { text-align: right; }
 .range { width: 100%; height: 8px; appearance: none; border-radius: 999px; background: linear-gradient(to right, var(--text) var(--fill, 0%), var(--progress-bg) var(--fill, 0%)); outline: none; }
@@ -295,18 +320,20 @@ body.has-drawer .side-actions { display: none; }
 .play-button .pause-icon { display: none; }
 .play-button.is-playing .play-icon { display: none; }
 .play-button.is-playing .pause-icon { display: inline; }
-body.module-usb .play-button { box-shadow: 0 14px 34px rgba(45,108,223,.28); }
-body.module-usb .play-button:hover, body.module-usb .play-button:focus-visible { box-shadow: 0 14px 34px rgba(45,108,223,.28); }
-body.module-usb .play-button:active { box-shadow: 0 8px 18px rgba(45,108,223,.22); }
+body.module-usb .play-button { box-shadow: none; }
+body.module-usb .play-button:hover, body.module-usb .play-button:focus-visible { box-shadow: none; }
+body.module-usb .play-button:active { box-shadow: none; }
 
 .usb-nav-btn { width: 48px; height: 48px; padding: 0; border-radius: 50%; background: transparent; display: inline-flex; align-items: center; justify-content: center; }
-.usb-btn-icon { width: 28px; height: 28px; display: block; }
-.usb-play-btn { width: 68px; height: 68px; padding: 0; border-radius: 50%; background: transparent; display: inline-flex; align-items: center; justify-content: center; }
-.usb-play-btn .usb-play-icon { display: block; width: 68px; height: 68px; }
-.usb-play-btn .usb-pause-icon { display: none; font-size: 24px; color: #333; }
+.usb-nav-btn:hover,
+.usb-nav-btn:focus-visible,
+.usb-nav-btn:active { background: transparent; box-shadow: none; outline: none; transform: none; }
+.usb-btn-icon { width: 50px; height: 54.84px; display: block; }
+.usb-play-btn { width: 80px; height: 80px; padding: 0; border-radius: 50%; background: transparent; display: inline-flex; align-items: center; justify-content: center; }
+.usb-play-btn .usb-play-icon { display: block; width: 80px; height: 80px; }
+.usb-play-btn .usb-pause-icon { display: none; width: 80px; height: 80px; }
 .usb-play-btn.is-playing .usb-play-icon { display: none; }
-.usb-play-btn.is-playing .usb-pause-icon { display: block; width: 24px; height: 24px; position: relative; }
-.usb-play-btn .usb-pause-icon::before { content: ''; position: absolute; left: 4px; top: 0; width: 6px; height: 24px; background: #2181FF; border-radius: 2px; box-shadow: 10px 0 0 #2181FF; }
+.usb-play-btn.is-playing .usb-pause-icon { display: block; }
 
 .placeholder-overlay {
   position: absolute;
@@ -324,9 +351,11 @@ body.module-usb .play-button:active { box-shadow: 0 8px 18px rgba(45,108,223,.22
 
 
 
+/* ----------------------------- 抽屉面板（播放列表/收藏） ----------------------------- */
+/* 底部抽屉，可拖拽收起，含播放/编辑/批量操作等功能 */
 .drawer-backdrop { position: absolute; inset: 0; z-index: 6; background: var(--black-3); opacity: 0; pointer-events: none; transition: opacity 220ms ease; }
 .shell.has-drawer .drawer-backdrop { opacity: 1; pointer-events: auto; }
-.drawer-panel { position: absolute; bottom: 0; left: 0; right: 0; z-index: 7; height: 605px; display: flex; min-width: 0; flex-direction: column; padding: 8px 18px max(22px, env(safe-area-inset-bottom)); background: var(--surface-strong); border-top-left-radius: 20px; border-top-right-radius: 20px; box-shadow: 0 -12px 40px var(--black-44); transform: translateY(100%); opacity: 0; pointer-events: none; transition: transform 300ms cubic-bezier(.22,1,.36,1), opacity 200ms ease; overflow: hidden; }
+.drawer-panel { position: absolute; bottom: 0; left: 0; right: 0; z-index: 7; height: 605px; display: flex; min-width: 0; flex-direction: column; padding: 8px 18px max(22px, var(--status-safe-bottom)); background: var(--surface-strong); border-top-left-radius: 20px; border-top-right-radius: 20px; box-shadow: 0 -12px 40px var(--black-44); transform: translateY(100%); opacity: 0; pointer-events: none; transition: transform 300ms cubic-bezier(.22,1,.36,1), opacity 200ms ease; overflow: hidden; }
 .drawer-panel.is-open { transform: translateY(0); opacity: 1; pointer-events: auto; }
 .drawer-panel.is-dragging { transition: none; }
 .drawer-panel.is-hidden { transform: translateY(calc(100% - 30px)); }
@@ -336,9 +365,9 @@ body.module-usb .play-button:active { box-shadow: 0 8px 18px rgba(45,108,223,.22
 .sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding-bottom: 12px; border-bottom: 1px solid var(--line); flex-shrink: 0; }
 .sheet-head-left { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .sheet-head-left h2 { font-size: clamp(18px, 5vw, 22px); font-weight: 700; line-height: 1.25; margin-right: 4px; }
-.sheet-head-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
-.sheet-play-btn { width: 36px; height: 36px; padding: 0; border-radius: 50%; color: var(--white); background: var(--blue); display: inline-flex; align-items: center; justify-content: center; transition: background-color 160ms ease, transform 160ms ease; }
-.sheet-play-btn:hover { background: var(--blue-hover); }
+.sheet-head-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; margin-right: 70px; }
+.sheet-play-btn { width: 32px; height: 32px; padding: 0; border-radius: 50%; color: var(--white); background: #2181FF; display: inline-flex; align-items: center; justify-content: center; transition: background-color 160ms ease, transform 160ms ease; }
+.sheet-play-btn:hover { background: #1a6fe0; }
 .sheet-play-btn:active { transform: scale(0.94); }
 .sheet-play-btn .sheet-icon-pause { display: none; }
 .sheet-play-btn[aria-pressed="true"] .sheet-icon-play { display: none; }
@@ -358,8 +387,8 @@ body.module-usb .play-button:active { box-shadow: 0 8px 18px rgba(45,108,223,.22
 .sheet-edit-btn img { width: 18px; height: 18px; filter: var(--icon-filter); }
 .sheet-batch-bar { display: none; align-items: center; gap: 10px; flex: 1; padding-left: 8px; }
 .sheet-batch-bar:not([hidden]) { display: inline-flex; }
-.batch-select-all { flex-shrink: 0; width: 18px; height: 18px; display: inline-flex !important; align-items: center; justify-content: center; border-width: 1.5px; }
-.batch-select-label { font-size: 24px; color: var(--text); font-weight: 600; line-height: 1.5; }
+.batch-select-all { flex-shrink: 0; width: 16px; height: 16px; min-width: 16px; min-height: 16px; display: inline-flex !important; align-items: center; justify-content: center; border-width: 1.5px; }
+.batch-select-label { font-size: 18px; color: var(--text); font-weight: 600; line-height: 1.5; }
 .sheet-batch-actions { display: none; align-items: center; gap: 70px; }
 .sheet-batch-actions:not([hidden]) { display: inline-flex; }
 .batch-remove-btn { padding: 0; border-radius: 0; color: var(--text); background: transparent; font-size: 18px; font-weight: 500; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; line-height: 1.5; border: none; cursor: pointer; transition: color 80ms ease, opacity 80ms ease; }
@@ -374,6 +403,8 @@ body.module-usb .play-button:active { box-shadow: 0 8px 18px rgba(45,108,223,.22
 .playlist { flex: 1; min-height: 0; margin: 0; padding: 8px 4px 0; list-style: none; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; }
 .playlist::-webkit-scrollbar, .device-list::-webkit-scrollbar { width: 4px; }
 .playlist::-webkit-scrollbar-thumb, .device-list::-webkit-scrollbar-thumb { border-radius: 999px; background: var(--scrollbar-thumb); }
+/* ----------------------------- USB模块专用样式 ----------------------------- */
+/* USB模块拥有独立的深色主题和黑胶唱片视觉效果 */
 .usb-toast { position: absolute; left: 50%; top: calc(var(--status-safe-top) + 54px); z-index: 12; max-width: min(86vw, 520px); padding: 10px 16px; border: 1px solid var(--white-14); border-radius: 999px; color: var(--white); background: var(--black-86); box-shadow: 0 14px 34px var(--black-32); opacity: 0; pointer-events: none; transform: translate(-50%, -12px); transition: opacity 180ms ease, transform 180ms ease; }
 .usb-toast.is-visible { opacity: 1; transform: translate(-50%, 0); }
 .feature-module.usb-module { display: none; position: absolute; inset: 0; left: 0; right: 0; top: 0; bottom: 0; overflow: visible; padding: 0; }
@@ -385,21 +416,21 @@ body.module-usb .feature-module.usb-module { display: block; }
 .usb-bg-overlay { position: absolute; inset: 0; z-index: 0; background-image: none; background-size: cover; background-position: center; filter: blur(40px); opacity: 0; transition: opacity 400ms ease; pointer-events: none; }
 .usb-bg-overlay.is-active { opacity: 0.3; }
 .usb-module > .hero, .usb-module > .visualizer-row, .usb-module > .transport { z-index: 1; }
-.usb-module .hero { position: absolute; left: 16px; right: 16px; top: calc(max(clamp(88px, 13dvh, 132px), calc(var(--module-safe-top) + 12px)) + 20px); bottom: calc(max(18px, env(safe-area-inset-bottom)) + 550px); display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 24px; text-align: center; z-index: 2; }
-.usb-module .visualizer-row { position: absolute; left: 16px; right: 16px; bottom: calc(max(18px, env(safe-area-inset-bottom)) + 300px); height: 200px; display: flex; align-items: center; justify-content: center; pointer-events: none; overflow: hidden; }
+.usb-module .hero { position: absolute; left: 0; right: 0; top: calc(max(clamp(88px, 13dvh, 132px), calc(var(--module-safe-top) + 12px)) + 20px); bottom: calc(max(18px, var(--status-safe-bottom)) + 550px); display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 24px; text-align: center; z-index: 2; padding: 0 16px; }
+.usb-module .visualizer-row { position: absolute; left: 0; right: 0; bottom: calc(max(18px, var(--status-safe-bottom)) + 300px); height: 200px; display: flex; align-items: center; justify-content: center; pointer-events: none; overflow: hidden; }
 .usb-module .hero .album-container { display: flex; flex-direction: column; align-items: center; gap: 16px; }
 .usb-module .hero .album-wrap { flex-shrink: 0; width: 360px; height: 360px; aspect-ratio: auto; background: url("./assets/black-vinyl.png") center / contain no-repeat; box-shadow: none; display: flex; align-items: center; justify-content: center; }
 .usb-module .hero .album-wrap::before { display: none; }
 .usb-module .hero .album-wrap::after { display: none; }
-.usb-module .hero .album-art { width: 33%; height: 33%; border-radius: 50%; object-fit: cover; box-shadow: none; display: none; }
-.usb-module .hero .album-art.has-cover { display: block; }
+.usb-module .hero .album-art { width: 240px; height: 240px; border-radius: 50%; object-fit: cover; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3); opacity: 0; transform: scale(0.96); transition: opacity 250ms ease, transform 250ms ease; }
+.usb-module .hero .album-art.has-cover { opacity: 1; transform: scale(1); }
 .usb-module .transport { gap: 16px; }
 .usb-module .transport .track-meta { text-align: left; gap: 10px; align-self: flex-start; }
 .usb-module .progress-row {margin-bottom: 48px; /* 增大此值可将进度条上移 */}
 .usb-module .progress-row .range { height: 4px; background: linear-gradient(to right, #2181FF var(--fill, 0%), #E0E8F3 var(--fill, 0%)); }
 .usb-module .progress-row .range::-webkit-slider-thumb { width: 12px; height: 12px; background: #2181FF; }
 .usb-module .progress-row .range::-moz-range-thumb { width: 12px; height: 12px; background: #2181FF; border: 0; }
-body.module-usb .side-actions { flex-direction: row; gap: 30px; top: auto; transform: none; bottom: calc(max(18px, env(safe-area-inset-bottom)) + 220px); right: 35px; }
+body.module-usb .side-actions { flex-direction: row; gap: 30px; top: auto; transform: none; bottom: calc(max(18px, var(--status-safe-bottom)) + 220px); right: 35px; }
 body.module-usb .side-actions .track-action-button { width: 50px; height: 50px; border-radius: 12px; background: transparent; box-shadow: none; }
 body.module-usb .side-actions .track-action-button img { width: 32px; height: 32px; }
 body.module-usb .play-mode-button, body.module-usb .play-mode-button[data-mode="loop"], body.module-usb .play-mode-button[data-mode="single"], body.module-usb .play-mode-button[data-mode="random"], body.module-usb .play-mode-button[data-mode="list"] { background: transparent; box-shadow: none; }
@@ -484,7 +515,7 @@ body.module-usb .play-mode-button, body.module-usb .play-mode-button[data-mode="
 .tips { flex-wrap: wrap; gap: 8px; margin-top: 16px; color: var(--muted); font-size: 14px; }
 .tips span { padding: 7px 10px; border-radius: 999px; background: var(--white-06); }
 
-.feature-module { position: absolute; left: 16px; right: 16px; top: max(clamp(76px, 12dvh, 112px), var(--module-safe-top)); bottom: 18px; display: none; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; padding-right: 2px; }
+.feature-module { position: absolute; left: 0; right: 0; top: max(clamp(76px, 12dvh, 112px), var(--module-safe-top)); bottom: 18px; display: none; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; padding-right: 2px; }
 .feature-module.is-active { display: grid; align-content: center; gap: 16px; }
 .feature-card, .feature-control-card { border: 1px solid var(--line); border-radius: 24px; background: var(--surface); box-shadow: 0 18px 48px var(--black-32); backdrop-filter: blur(12px); }
 .feature-card { padding: 22px; }
@@ -492,7 +523,7 @@ body.module-usb .play-mode-button, body.module-usb .play-mode-button[data-mode="
 .module-kicker { color: var(--muted); font-size: 13px; letter-spacing: .18em; text-transform: uppercase; }
 .feature-card h2 { margin-top: 6px; color: var(--text); font-size: clamp(30px, 9vw, 48px); line-height: 1.15; }
 .feature-control-card h3 { color: var(--text); font-size: clamp(20px, 5vw, 26px); line-height: 1.35; }
-.module-status, #btDeviceMeta { margin-top: 10px; color: var(--muted-strong); font-size: 15px; line-height: 1.55; }
+.module-status { margin-top: 10px; color: var(--muted-strong); font-size: 15px; line-height: 1.55; }
 .feature-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px; }
 .feature-button { min-height: 44px; padding: 0 16px; border-radius: 999px; color: var(--text); background: var(--white-09); font-size: 15px; font-weight: 700; }
 .feature-button.primary { color: var(--white); background: var(--blue); }
@@ -513,6 +544,8 @@ body.module-usb .play-mode-button, body.module-usb .play-mode-button[data-mode="
 .small-play { width: 64px; height: 64px; font-size: 30px; }
 .module-volume { display: grid; grid-template-columns: 42px minmax(0,1fr) 48px; align-items: center; gap: 12px; margin-top: 20px; color: var(--muted-strong); font-size: 14px; }
 .module-volume strong { text-align: right; }
+/* ============ 收音机基础样式（UI已注释，全部停用） ============ */
+/*
 .radio-console { display: grid; align-content: center; gap: 18px; background: var(--radio-bg); }
 .radio-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
 .radio-band-switch { display: grid; grid-template-columns: repeat(2, minmax(86px, 1fr)); width: min(276px, 58vw); margin: 8px 0 18px; overflow: hidden; border-radius: 8px; background: var(--radio-band-bg); }
@@ -548,9 +581,14 @@ body.module-usb .play-mode-button, body.module-usb .play-mode-button[data-mode="
 
 body.module-radio .player-panel { background: var(--radio-bg); background-image: none; }
 body.module-radio .player-panel::before { background: var(--radio-bg); }
+*/
+/* ============ 收音机模块样式（UI已注释，全部停用） ============
+FM/AM频段切换、频率刻度、电台搜索弹窗、预设收藏网格等收音机专属样式。
+注：@keyframes spin 为USB黑胶唱片共用动画，保留在下方677行，不受影响。 */
+/*
 .radio-module { background: var(--radio-bg); }
 .radio-module.is-active { display: flex; align-items: center; justify-content: center; padding: 0; overflow: hidden; }
-.radio-stage { position: relative; width: min(100%, 768px); height: min(100%, 900px); min-height: 0; display: grid; grid-template-rows: auto auto auto auto auto; align-content: start; padding: clamp(14px, 2.2dvh, 24px) clamp(24px, 8.3vw, 64px) 360px; color: var(--feature-text); background: var(--radio-bg); }
+.radio-stage { position: relative; width: 100%; height: 100%; min-height: 0; display: grid; grid-template-rows: auto auto auto auto auto; align-content: start; padding: clamp(14px, 2.2dvh, 24px) clamp(24px, 8.3vw, 64px) calc(360px + var(--status-safe-bottom)); color: var(--feature-text); background: var(--radio-bg); }
 .radio-stage button { transition: background-color 120ms ease, color 120ms ease, opacity 120ms ease, transform 120ms ease; }
 .radio-mode-row { display: flex; align-items: center; justify-content: center; gap: clamp(24px, 18vw, 184px); }
 .radio-stage .radio-band-switch { width: 276px; height: 48px; margin: 0; border-radius: 8px; background: var(--radio-stage-band-bg); }
@@ -598,6 +636,7 @@ body.module-radio .player-panel::before { background: var(--radio-bg); }
 .radio-stage .radio-controls-row > .icon-button#radioFavoriteBtn svg.favorite-icon path { fill: none; stroke: currentColor; }
 .radio-stage .radio-controls-row > .icon-button#radioFavoriteBtn[aria-pressed="true"] svg.favorite-icon path { fill: #ED3434; stroke: #ED3434; }
 .radio-controls-row .play-button:disabled { opacity: 0.5; cursor: not-allowed; }
+动画关键帧（spin）见下方677行，为USB黑胶唱片共用
 @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 .radio-controls-row .play-button { width: 72px; height: 72px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 8px; box-shadow: none; background: transparent; }
 .radio-controls-row .play-button .play-icon { width: 56px; height: 56px; }
@@ -605,7 +644,7 @@ body.module-radio .player-panel::before { background: var(--radio-bg); }
 .radio-controls-row .play-button.is-playing .play-icon { display: none; }
 .radio-controls-row .play-button.is-playing .pause-icon { display: block; }
 .radio-list-container { display: flex; flex-direction: column; height: 220px; min-height: 200px; max-height: 240px; margin-top: auto; overflow: hidden; }
-.radio-stage .radio-list-container { position: absolute; bottom: 0; left: 0; right: 0; transform: translateY(51.5px); width: 100%; max-width: 100%; height: 340px; background: var(--radio-list-bg-active); border-radius: 16px 16px 0 0; padding: 14px 24px 0; overflow: hidden; z-index: 3; }
+.radio-stage .radio-list-container { position: absolute; bottom: var(--status-safe-bottom); left: 0; right: 0; transform: translateY(51.5px); width: 100%; max-width: 100%; height: 340px; background: var(--radio-list-bg-active); border-radius: 16px 16px 0 0; padding: 14px 24px 0; overflow: hidden; z-index: 3; }
 .radio-list-container .preset-grid { flex: 1; min-height: 0; overflow-y: auto; }
 .radio-search-modal { position: absolute; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; }
 .radio-search-modal[hidden] { display: none; }
@@ -615,7 +654,7 @@ body.module-radio .player-panel::before { background: var(--radio-bg); }
 .radio-search-text { margin-top: 16px; color: #ffffff; font-size: 20px; font-weight: 500; letter-spacing: 2px; }
 .radio-stage .radio-list-head { display: flex; align-items: center; justify-content: space-between; width: 100%; margin-top: 0; padding: 0 2px; color: var(--feature-disabled); flex-shrink: 0; }
 .radio-stage .radio-list-head h3 { color: var(--feature-disabled); font-size: 18px; font-weight: 400; line-height: 27px; }
-.radio-stage .preset-grid { position: relative; z-index: 1; width: 100%; margin: 12px auto 0; grid-auto-rows: 56px; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 24px 32px; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; padding-right: 6px; scrollbar-width: thin; scrollbar-color: var(--scrollbar-thumb-light) transparent; -webkit-overflow-scrolling: touch; contain: layout paint; }
+.radio-stage .preset-grid { position: relative; z-index: 1; width: 100%; margin: 12px auto 0; grid-auto-rows: 56px; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 24px 32px; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; padding-right: 6px; 底部留白补偿列表下移与导航栏高度，确保最后一个预设按钮可滚动到导航栏之上 padding-bottom: calc(var(--status-safe-bottom) + 52px); scrollbar-width: thin; scrollbar-color: var(--scrollbar-thumb-light) transparent; -webkit-overflow-scrolling: touch; contain: layout paint; }
 .radio-stage .preset-grid::-webkit-scrollbar { width: 4px; }
 .radio-stage .preset-grid::-webkit-scrollbar-thumb { border-radius: 999px; background: var(--scrollbar-thumb-light); }
 .radio-stage .preset-button { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; width: 100%; max-width: 104px; height: 56px; justify-self: center; padding: 5px 8px; border-radius: 10px; border: 1px solid var(--radio-presets-card-border); color: var(--radio-presets-text); background: var(--radio-presets-card-bg); font-size: 14px; font-weight: 600; text-align: center; transition: background-color 220ms ease, color 220ms ease, border-color 220ms ease, box-shadow 220ms ease, transform 160ms ease; }
@@ -637,36 +676,38 @@ body.module-radio .player-panel::before { background: var(--radio-bg); }
 .radio-stage .radio-controls-row .play-button:focus-visible { background: transparent; box-shadow: none; }
 .radio-stage .icon-button { width: 56px; height: 56px; font-size: 24px; }
 .radio-stage .small-play { width: 72px; height: 72px; border: 1px solid var(--radio-stage-play-border); border-radius: 22px; color: var(--radio-stage-play-text); background: var(--radio-stage-play-bg); font-size: 32px; touch-action: manipulation; }
+*/
 
 @keyframes spin { to { transform: rotate(360deg); } }
+/* ----------------------------- 响应式媒体查询 ----------------------------- */
+/* 横屏适配、平板大屏适配、小屏优化、暗色/亮色主题切换 */
 @keyframes heartPulse { 0% { transform: scale(1); } 50% { transform: scale(1.16); } 100% { transform: scale(1); } }
 
 @media (orientation: landscape) and (max-height: 640px) {
-  .tabs { top: max(var(--status-safe-top), 10px); max-width: 560px; }
-  .hero { left: 24px; right: 48%; top: max(68px, calc(var(--module-safe-top) + 8px)); height: auto; bottom: 22px; gap: 10px; justify-content: center; }
+  .tabs { top: max(var(--status-safe-top), 10px); }
+  .hero { left: 0; right: 48%; top: max(68px, calc(var(--module-safe-top) + 8px)); height: auto; bottom: 22px; gap: 10px; justify-content: center; padding: 0 16px; }
   .visualizer-row { display: none; }
-  .transport { left: 52%; right: 28px; bottom: 42px; top: max(76px, calc(var(--module-safe-top) + 8px)); display: flex; flex-direction: column; justify-content: center; gap: 36px; }
-  .feature-module { top: max(70px, var(--module-safe-top)); left: 24px; right: 24px; bottom: 18px; grid-template-columns: 1fr 1fr; align-items: center; }
+  .transport { left: 52%; right: 0; bottom: 42px; top: max(76px, calc(var(--module-safe-top) + 8px)); display: flex; flex-direction: column; justify-content: center; gap: 36px; padding: 0 16px; }
+  .feature-module { top: max(70px, var(--module-safe-top)); left: 0; right: 0; bottom: 0; grid-template-columns: 1fr 1fr; align-items: center; }
   .feature-module.is-active { display: grid; }
-  .usb-module .transport { left: 52%; right: 28px; bottom: 42px; top: max(76px, calc(var(--module-safe-top) + 8px)); }
+  .usb-module .transport { left: 52%; right: 0; bottom: 42px; top: max(76px, calc(var(--module-safe-top) + 8px)); padding: 0 16px; }
   .usb-module .hero { top: 140px; bottom: 140px; }
   body.module-usb .side-actions { bottom: 175px; right: 28px; }
 }
 
 /* Tablet breakpoint: 768px-1199px */
 @media (min-width: 768px) {
-  body { padding-inline: 24px; }
-  .shell { width: min(100vw - 48px, 1024px); border-radius: 28px; }
-  .tabs { top: max(var(--status-safe-top), 28px); max-width: 620px; gap: 18px; }
+  .shell { width: 100%; height: 100dvh; border-radius: 0; }
+  .tabs { top: max(var(--status-safe-top), 28px); gap: 18px; }
   .tab { font-size: 20px; }
-  .hero { left: 48px; right: 48px; top: 132px; bottom: 380px; gap: 16px; justify-content: center; }
-  .visualizer-row { bottom: calc(max(18px, env(safe-area-inset-bottom)) + 180px); height: 200px; }
+  .hero { left: 0; right: 0; top: 132px; bottom: 380px; gap: 16px; justify-content: center; padding: 0 48px; }
+  .visualizer-row { bottom: calc(max(18px, var(--status-safe-bottom)) + 180px); height: 200px; }
   .album-wrap { width: clamp(240px, min(34vw, 38dvh), 320px); }
   .usb-module .hero .album-wrap { width: 360px; height: 360px; }
   .usb-module .hero { top: 174px; bottom: 200px; }
   #trackTitle { font-size: clamp(28px, 4vw, 34px); }
   #trackArtist { font-size: 18px; }
-  .transport { left: 72px; right: 72px; bottom: 56px; display: flex; flex-direction: column; gap: 36px; }
+  .transport { left: 0; right: 0; bottom: 56px; display: flex; flex-direction: column; gap: 36px; padding: 0 72px; }
   .progress-row { grid-template-columns: 52px minmax(0, 1fr) 52px; font-size: 16px; gap: 16px; }
   .controls { gap: 22px; }
   .icon-button { width: 56px; height: 56px; }
@@ -676,39 +717,38 @@ body.module-radio .player-panel::before { background: var(--radio-bg); }
   .drawer-panel.is-open { transform: translateX(-50%) translateY(0); }
   .drawer-panel.is-dragging { transition: none; }
   .drawer-panel.is-hidden { transform: translateX(-50%) translateY(calc(100% - 30px)); }
-  .feature-module { left: 72px; right: 72px; top: max(118px, var(--module-safe-top)); bottom: 44px; grid-template-columns: minmax(0, 1.08fr) minmax(0, .92fr); align-items: center; gap: 22px; overflow: hidden; }
+  .feature-module { left: 0; right: 0; top: max(118px, var(--module-safe-top)); bottom: 0; grid-template-columns: minmax(0, 1.08fr) minmax(0, .92fr); align-items: center; gap: 22px; overflow: hidden; }
   .feature-module.is-active { display: grid; }
   .feature-card, .feature-control-card { min-height: 0; }
   .feature-control-card { margin-top: 0; }
   .preset-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px 22px; }
-  .usb-module .transport { left: 72px; right: 72px; bottom: 56px; }
+  .usb-module .transport { left: 0; right: 0; bottom: 56px; padding: 0 72px; }
   body.module-usb .side-actions { bottom: 191px; right: 72px; }
 }
 
 /* Desktop breakpoint: >=1200px */
 @media (min-width: 1200px) {
-  body { padding-inline: 40px; }
-  .shell { width: min(100vw - 80px, 1280px); height: min(100dvh, 820px); border-radius: 32px; }
-  .tabs { top: max(var(--status-safe-top), 34px); max-width: 700px; }
-  .hero { left: 8%; right: 52%; top: 132px; bottom: 360px; gap: 16px; justify-content: center; }
-  .visualizer-row { bottom: calc(max(18px, env(safe-area-inset-bottom)) + 180px); height: 160px; left: 8%; right: 52%; }
+  .shell { width: 100%; height: 100dvh; border-radius: 0; }
+  .tabs { top: max(var(--status-safe-top), 34px); }
+  .hero { left: 0; right: 52%; top: 132px; bottom: 360px; gap: 16px; justify-content: center; padding: 0 8%; }
+  .visualizer-row { bottom: calc(max(18px, var(--status-safe-bottom)) + 180px); height: 160px; left: 0; right: 52%; }
   .album-wrap { width: clamp(300px, 25vw, 360px); }
   .usb-module .hero .album-wrap { width: 360px; height: 360px; }
   .usb-module .hero { top: 180px; bottom: 200px; }
   .track-meta { gap: 12px; }
-  .transport { left: 52%; right: 7%; top: 164px; bottom: 108px; display: flex; flex-direction: column; justify-content: center; gap: 36px; }
+  .transport { left: 52%; right: 0; top: 164px; bottom: 108px; display: flex; flex-direction: column; justify-content: center; gap: 36px; padding: 0 7%; }
   .controls { max-width: 560px; }
   .volume-row { opacity: 1; pointer-events: auto; }
   .drawer-panel { width: min(100%, 640px); left: 50%; right: auto; transform: translateX(-50%) translateY(100%); }
   .drawer-panel.is-open { transform: translateX(-50%) translateY(0); }
   .drawer-panel.is-dragging { transition: none; }
   .drawer-panel.is-hidden { transform: translateX(-50%) translateY(calc(100% - 30px)); }
-  .feature-module { left: 8%; right: 8%; top: max(128px, var(--module-safe-top)); bottom: 64px; grid-template-columns: minmax(0, 1fr) minmax(360px, .8fr); gap: 28px; }
+  .feature-module { left: 0; right: 0; top: max(128px, var(--module-safe-top)); bottom: 0; grid-template-columns: minmax(0, 1fr) minmax(360px, .8fr); gap: 28px; }
   .feature-card { padding: 36px; }
   .feature-control-card { padding: 30px 34px; }
   .device-list { max-height: 240px; }
   .preset-grid { grid-template-columns: repeat(5, minmax(92px, 1fr)); gap: 22px 40px; }
-  .usb-module .transport { left: 52%; right: 7%; top: 164px; bottom: 108px; }
+  .usb-module .transport { left: 52%; right: 0; top: 164px; bottom: 108px; padding: 0 7%; }
   body.module-usb .side-actions { bottom: 230px; right: 7%; top: auto; }
 }
 
@@ -716,24 +756,29 @@ body.module-radio .player-panel::before { background: var(--radio-bg); }
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: 0.01ms !important; }
 }
 
+/* 收音机模块全屏布局（UI已注释，停用） */
+/*
 body.module-radio .shell { background: var(--radio-bg); }
 body.module-radio .feature-module.radio-module { left: 0; right: 0; top: var(--module-safe-top); bottom: 0; grid-template-columns: none; gap: 0; background: var(--radio-bg); }
 body.module-radio .radio-module .preset-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px 18px; }
+*/
 
 body.module-bluetooth .shell { background: var(--bluetooth-bg); border-radius: 0; }
 body.module-bluetooth .player-panel { background: var(--bluetooth-bg); background-image: none; border-radius: 0; }
 body.module-bluetooth .player-panel::before { background: var(--bluetooth-bg); border-radius: 0; }
 body.module-bluetooth .feature-module.bluetooth-module { left: 0; right: 0; top: var(--module-safe-top); bottom: 0; grid-template-columns: none; gap: 0; padding: 0; overflow: hidden; background: var(--bluetooth-bg); border-radius: 0; }
 
+/* ----------------------------- 蓝牙模块样式 ----------------------------- */
+/* 蓝牙音频设备连接控制：离线/在线两种状态，支持A2DP播放元数据显示 */
 /* === Bluetooth Stage Layout === */
 .bluetooth-stage {
   position: relative;
-  width: min(100%, 768px);
-  height: min(100%, 900px);
+  width: 100%;
+  height: 100%;
   display: grid;
   grid-template-rows: 1fr auto auto;
   align-content: center;
-  padding: clamp(24px, 4dvh, 48px) clamp(24px, 8.3vw, 64px) clamp(16px, 3dvh, 32px);
+  padding: clamp(24px, 4dvh, 48px) clamp(24px, 8.3vw, 64px) calc(var(--status-safe-bottom) + clamp(16px, 3dvh, 32px));
   color: var(--bluetooth-text);
   background: var(--bluetooth-bg);
   transition: padding 240ms ease, height 240ms ease;
@@ -769,39 +814,28 @@ body.module-bluetooth .feature-module.bluetooth-module { left: 0; right: 0; top:
 
 /* === Player Base States === */
 .bluetooth-player {
+  position: relative;
   display: none;
-  align-content: center;
-  justify-items: center;
-  min-height: 620px;
+  width: 100%;
+  height: 100%;
 }
-.bluetooth-module.is-connected .bluetooth-player { display: grid; }
+.bluetooth-module.is-connected .bluetooth-player { display: block; }
 .bluetooth-module.is-connected .bluetooth-offline { display: none; }
 
 /* === Connected (Not Playing) Layout === */
 .bluetooth-module.is-connected:not(.is-playing) .bluetooth-stage {
+  height: 100%;
   grid-template-rows: auto 1fr auto;
   align-content: center;
-}
-.bluetooth-module.is-connected:not(.is-playing) .bluetooth-player {
-  width: 100%;
-  min-height: 0;
-  align-content: center;
-  gap: 0;
+  padding: 0;
 }
 
 /* === Playing Layout === */
 .bluetooth-module.is-playing .bluetooth-stage {
-  height: min(100%, 945px);
+  height: 100%;
   grid-template-rows: 1fr auto;
   align-content: start;
-  padding-top: clamp(40px, 8dvh, 72px);
-  padding-bottom: clamp(20px, 4dvh, 40px);
-}
-.bluetooth-module.is-playing .bluetooth-player {
-  width: 100%;
-  min-height: 0;
-  align-content: start;
-  gap: 0;
+  padding: 0;
 }
 .bluetooth-module.is-playing .bluetooth-status {
   min-height: 20px;
@@ -813,12 +847,13 @@ body.module-bluetooth .feature-module.bluetooth-module { left: 0; right: 0; top:
 
 /* === Album Art / Vinyl Disc === */
 .bluetooth-album {
-  position: relative;
-  width: clamp(220px, 42vw, 300px);
-  height: clamp(220px, 42vw, 300px);
+  position: absolute;
+  left: 280px;
+  top: 288px;
+  width: 240px;
+  height: 240px;
   display: grid;
   place-items: center;
-  margin-top: clamp(4px, 2dvh, 18px);
   border-radius: 50%;
   background: var(--bluetooth-album);
   /* Metallic vinyl ring effect */
@@ -877,7 +912,6 @@ body.module-bluetooth .feature-module.bluetooth-module { left: 0; right: 0; top:
 
 /* Spinning animation when playing */
 .bluetooth-module.is-playing .bluetooth-album {
-  margin-top: 0;
   animation: btVinylSpin 20s linear infinite;
 }
 
@@ -891,85 +925,71 @@ body.module-bluetooth .feature-module.bluetooth-module { left: 0; right: 0; top:
   height: 72%;
 }
 
-/* === Visualizer === */
-#btVisualizer {
-  width: 100%;
-  height: 60px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  pointer-events: none;
-  margin: 8px 0 4px;
-}
-#btVisualizer .audio-visualizer {
-  width: 100%;
-  height: 100%;
-}
-
 /* === Song Info (Connected State) === */
 .bluetooth-player h2 {
-  max-width: min(100%, 620px);
-  margin-top: 20px;
+  position: absolute;
+  left: 301px;
+  top: 680px;
+  width: 198px;
+  height: 30px;
+  margin: 0;
   color: var(--bluetooth-device-text);
   font-size: 24px;
   font-weight: 600;
-  line-height: 1.25;
+  line-height: 30px;
   text-align: center;
-  overflow-wrap: anywhere;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   text-shadow: 0 1px 8px rgba(0,0,0,.65);
-  transition: font-size 240ms ease, margin-top 240ms ease;
-}
-.bluetooth-player #btDeviceMeta {
-  max-width: min(100%, 620px);
-  margin-top: 12px;
-  color: var(--bluetooth-device-meta-color);
-  font-size: 18px;
-  font-weight: 500;
-  line-height: 1.35;
-  text-align: center;
-  overflow-wrap: anywhere;
-  transition: opacity 240ms ease, max-height 240ms ease;
+  transition: font-size 240ms ease;
 }
 
 /* === Song Info (Playing State) === */
 .bluetooth-track-meta {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 4px 12px;
-  margin-top: 10px;
+  position: absolute;
+  left: 301px;
+  top: 716px;
+  width: 198px;
+  height: 30px;
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  text-align: center;
+  margin: 0;
   color: var(--bluetooth-track-meta-color);
-  font-size: 14px;
-  transition: margin-top 240ms ease, font-size 240ms ease, color 240ms ease;
+  font-size: 16px;
+  line-height: 30px;
+  transition: font-size 240ms ease, color 240ms ease;
 }
 
 .bluetooth-module.is-playing .bluetooth-player h2 {
-  margin-top: 32px;
-  font-size: clamp(22px, 3.8vw, 30px);
+  font-size: 28px;
   font-weight: 600;
   letter-spacing: .01em;
   text-shadow: 0 1px 6px rgba(0,0,0,.5);
 }
-.bluetooth-module.is-playing .bluetooth-player #btDeviceMeta { display: none; }
 .bluetooth-module.is-playing .bluetooth-track-meta {
-  margin-top: 8px;
   color: var(--bluetooth-track-meta-playing-color);
-  font-size: clamp(14px, 2.2vw, 17px);
+  font-size: 18px;
 }
-.bluetooth-module.is-playing .bluetooth-track-meta #btAlbum { display: none; }
 
 /* === Progress Bar === */
 .bluetooth-progress {
-  width: min(100%, 340px);
+  position: absolute;
+  left: 70px;
+  top: 895px;
+  width: 660.82px;
+  height: 18px;
   display: grid;
   grid-template-columns: 36px minmax(0,1fr) 40px;
   align-items: center;
   gap: 12px;
-  margin-top: 24px;
+  margin: 0;
   color: var(--bluetooth-muted);
   font-size: 13px;
   font-variant-numeric: tabular-nums;
-  transition: margin-top 240ms ease, width 240ms ease;
 }
 .bluetooth-progress-track {
   position: relative;
@@ -1012,7 +1032,6 @@ body.module-bluetooth .feature-module.bluetooth-module { left: 0; right: 0; top:
 }
 
 .bluetooth-module.is-playing .bluetooth-progress {
-  margin-top: 20px;
   color: var(--bluetooth-muted);
 }
 .bluetooth-module.is-playing .bluetooth-progress-track {
@@ -1028,10 +1047,14 @@ body.module-bluetooth .feature-module.bluetooth-module { left: 0; right: 0; top:
 
 /* === Control Buttons === */
 .bluetooth-controls {
-  width: min(100%, 280px);
+  position: absolute;
+  left: 180px;
+  top: 941px;
+  width: 440px;
+  height: 80px;
   gap: 48px;
-  margin-top: 36px;
-  transition: margin-top 240ms ease, gap 240ms ease;
+  margin: 0;
+  transition: gap 240ms ease;
 }
 
 .bluetooth-controls .icon-button {
@@ -1047,83 +1070,64 @@ body.module-bluetooth .feature-module.bluetooth-module { left: 0; right: 0; top:
   transition: background-color 160ms ease, color 160ms ease, transform 120ms ease, opacity 160ms ease;
 }
 .bluetooth-controls .icon-button:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: transparent;
   color: var(--bluetooth-text);
 }
 .bluetooth-controls .icon-button:active {
-  transform: scale(0.92);
+  background: transparent;
+  box-shadow: none;
+  transform: none;
+}
+.bluetooth-controls .icon-button:focus-visible {
+  background: transparent;
+  box-shadow: none;
+  outline: none;
 }
 
 .bluetooth-controls .small-play {
-  width: 64px;
-  height: 64px;
+  width: 80px;
+  height: 80px;
+  padding: 0;
   border-radius: 50%;
-  color: var(--bluetooth-controls-play-text);
-  background: var(--bluetooth-controls-play-bg);
-  font-size: 28px;
-  box-shadow: 0 4px 16px rgba(33, 129, 255, 0.3);
-  will-change: transform, box-shadow, background-color;
-  transition: background-color 120ms linear, color 120ms linear, transform 120ms linear, box-shadow 160ms linear;
+  background: transparent;
+  box-shadow: none;
+  will-change: transform;
+  transition: transform 120ms linear, box-shadow 160ms linear;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   position: relative;
 }
+.bluetooth-controls .small-play svg {
+  width: 100%;
+  height: 100%;
+}
+.bluetooth-controls .small-play svg.play-icon { display: block; }
+.bluetooth-controls .small-play svg.pause-icon { display: none; }
+.bluetooth-controls .small-play.is-playing svg.play-icon { display: none; }
+.bluetooth-controls .small-play.is-playing svg.pause-icon { display: block; }
 .bluetooth-controls .small-play:hover {
-  box-shadow: 0 6px 20px rgba(33, 129, 255, 0.4);
+  box-shadow: none;
 }
 .bluetooth-controls .small-play:active {
   transform: scale(0.94);
 }
 
 .bluetooth-controls .small-play.is-playing {
-  color: var(--bluetooth-controls-playing-text);
-  background: var(--bluetooth-controls-playing-bg);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  box-shadow: none;
 }
-
-.bluetooth-module.is-playing .bluetooth-controls {
-  margin-top: 36px;
-}
-.bluetooth-module.is-playing .bluetooth-controls .icon-button {
-  color: var(--bluetooth-controls-text);
-  font-size: 0;
-}
-.bluetooth-module.is-playing .bluetooth-controls .icon-button::before {
-  font-size: 28px;
-  line-height: 1;
-}
-.bluetooth-module.is-playing #btPrevBtn::before { content: "‹"; }
-.bluetooth-module.is-playing #btNextBtn::before { content: "›"; }
 
 .bluetooth-module.is-playing .bluetooth-controls .small-play {
-  width: 64px;
-  height: 64px;
-  color: var(--bluetooth-controls-playing-text);
-  background: var(--bluetooth-controls-playing-bg);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  box-shadow: none;
 }
 .bluetooth-module.is-playing .bluetooth-controls .small-play.is-playing {
-  color: var(--bluetooth-controls-playing-text);
-  background: var(--bluetooth-controls-playing-bg);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
-}
-
-/* Hide mode row and volume when playing */
-.bluetooth-module.is-playing .bluetooth-mode-row,
-.bluetooth-module.is-playing .bluetooth-volume {
-  opacity: 0;
-  max-height: 0;
-  margin-top: 0;
-  overflow: hidden;
-  pointer-events: none;
-  transition: opacity 240ms ease, max-height 240ms ease, margin-top 240ms ease;
+  box-shadow: none;
 }
 
 /* === Play Button States === */
 .bluetooth-controls .small-play.is-pending {
   transform: scale(1.04);
-  box-shadow: 0 0 0 10px rgba(255,255,255,.14);
+  box-shadow: none;
 }
 .bluetooth-controls .small-play[data-playback-state="pending-play"],
 .bluetooth-controls .small-play[data-playback-state="pending-pause"] {
@@ -1136,14 +1140,6 @@ body.module-bluetooth .feature-module.bluetooth-module { left: 0; right: 0; top:
 }
 
 /* === Mode Row (Non-Playing) === */
-.bluetooth-mode-row {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 10px;
-  margin-top: 18px;
-}
-.bluetooth-mode-button,
 .bluetooth-refresh-button {
   min-height: 42px;
   padding: 0 16px;
@@ -1154,18 +1150,10 @@ body.module-bluetooth .feature-module.bluetooth-module { left: 0; right: 0; top:
   font-size: 15px;
   transition: background-color 160ms ease, color 160ms ease, border-color 160ms ease;
 }
-.bluetooth-mode-button:hover,
 .bluetooth-refresh-button:hover {
   color: var(--bluetooth-text);
   border-color: var(--bluetooth-text);
   background: rgba(255, 255, 255, 0.06);
-}
-
-/* === Volume (Non-Playing) === */
-.bluetooth-volume {
-  width: min(100%, 480px);
-  grid-template-columns: minmax(0,1fr) 48px;
-  margin-top: 16px;
 }
 
 /* === Status & Device Panel === */
@@ -1233,24 +1221,22 @@ body.module-bluetooth .feature-module.bluetooth-module { left: 0; right: 0; top:
 }
 
 @media (max-width: 640px) {
-  .bluetooth-stage { height: min(100%, 820px); padding-inline: 18px; }
-  .bluetooth-album { width: clamp(180px, 48vw, 240px); height: clamp(180px, 48vw, 240px); }
+  .bluetooth-stage { height: 100%; padding-inline: 0; }
   .bluetooth-album img { width: 72%; height: 72%; }
-  .bluetooth-progress { grid-template-columns: 32px minmax(0,1fr) 38px; gap: 10px; margin-top: 20px; font-size: 12px; width: min(100%, 300px); }
+  .bluetooth-progress { grid-template-columns: 32px minmax(0,1fr) 38px; gap: 10px; font-size: 12px; }
   .bluetooth-progress-track { height: 3px; }
   .bluetooth-progress-track:hover { height: 5px; }
   .bluetooth-progress-track i { width: 10px; height: 10px; }
-  .bluetooth-controls { gap: 36px; margin-top: 28px; width: min(100%, 240px); }
+  .bluetooth-controls { gap: 36px; }
   .bluetooth-controls .icon-button { width: 40px; height: 40px; font-size: 20px; }
-  .bluetooth-controls .small-play { width: 56px; height: 56px; font-size: 24px; }
-  .bluetooth-module.is-playing .bluetooth-controls .icon-button::before { font-size: 24px; }
+  .bluetooth-controls .small-play { width: 80px; height: 80px; }
   .bluetooth-device-panel { margin-top: 12px; }
   .bluetooth-stage .device-list { max-height: 112px; }
   .bluetooth-module.is-playing .bluetooth-player h2 { font-size: clamp(20px, 6vw, 26px); }
   .bluetooth-module.is-playing .bluetooth-track-meta { font-size: clamp(13px, 3.5vw, 15px); }
-  .bluetooth-module.is-playing .bluetooth-progress { margin-top: 16px; }
-  .bluetooth-module.is-playing .bluetooth-controls { margin-top: 28px; }
-  .radio-stage { height: min(100%, 820px); padding: clamp(10px, 1.8dvh, 18px) 18px 360px; }
+  /* 收音机中屏适配（UI已注释，停用） */
+  /*
+  .radio-stage { height: 100%; padding: clamp(10px, 1.8dvh, 18px) 0 360px; }
   .radio-mode-row { gap: 18px; }
   .radio-stage .radio-band-switch { width: min(276px, calc(100vw - 112px)); }
   .radio-stage .radio-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -1260,8 +1246,11 @@ body.module-bluetooth .feature-module.bluetooth-module { left: 0; right: 0; top:
   .radio-stage .preset-freq { font-size: 13px; }
   .preset-wave, .preset-wave-active { width: 56px; height: 10px; }
   .radio-stage .frequency-rail { grid-template-columns: 38px minmax(0,1fr) 38px; font-size: 20px; }
+  */
 }
 
+/* 收音机小屏适配（UI已注释，停用） */
+/*
 @media (max-width: 640px), (max-height: 820px) {
   body.module-radio .radio-stage {
     grid-template-rows: auto auto auto auto auto;
@@ -1386,7 +1375,10 @@ body.module-bluetooth .feature-module.bluetooth-module { left: 0; right: 0; top:
     border-radius: 18px;
   }
 }
+*/
 
+/* 收音机小屏矮屏适配（UI已注释，停用） */
+/*
 @media (max-width: 640px) and (max-height: 700px) {
   body.module-radio .radio-stage {
     padding-top: 6px;
@@ -1517,6 +1509,7 @@ body.module-bluetooth .feature-module.bluetooth-module { left: 0; right: 0; top:
     border-radius: 16px;
   }
 }
+*/
 
 @media (prefers-color-scheme: light) {
   :root {
@@ -1586,6 +1579,8 @@ body.module-bluetooth .feature-module.bluetooth-module { left: 0; right: 0; top:
     --progress-bg: rgba(0, 0, 0, 0.15);
     --progress-thumb: #333333;
     --progress-thumb-shadow: rgba(0, 0, 0, 0.2);
+    /* 收音机浅色主题变量（UI已注释，停用） */
+    /*
     --radio-bg: #ffffff;
     --radio-frequency: #333333;
     --radio-frequency-small: rgba(0, 0, 0, 0.6);
@@ -1640,6 +1635,7 @@ body.module-bluetooth .feature-module.bluetooth-module { left: 0; right: 0; top:
     --radio-controls-icon-hover-bg: #f0f0f0;
     --radio-controls-icon-active-bg: #e0e0e0;
     --radio-controls-icon-filter: none;
+    */
     --bluetooth-bg: radial-gradient(61.96% 61.96% at 50% 50%, #AAD9FF 0%, #E0E8F3 100%);
     --bluetooth-text: #333333;
     --bluetooth-muted: #999999;
@@ -1759,13 +1755,15 @@ body.module-bluetooth .feature-module.bluetooth-module { left: 0; right: 0; top:
   }
 
   .bluetooth-controls .small-play {
-    box-shadow: 0 4px 16px rgba(45, 108, 223, 0.25);
+    box-shadow: none;
   }
 
   .bluetooth-controls .small-play:hover {
-    box-shadow: 0 6px 20px rgba(45, 108, 223, 0.35);
+    box-shadow: none;
   }
 
+  /* 收音机浅色主题频率轨道微调（UI已注释，停用） */
+  /*
   body.module-radio .radio-stage .frequency-track {
     border-color: var(--radio-frequency-bar);
   }
@@ -1777,6 +1775,7 @@ body.module-bluetooth .feature-module.bluetooth-module { left: 0; right: 0; top:
   .radio-stage .frequency-track.is-tuning i {
     box-shadow: 0 0 6px var(--radio-frequency-thumb), 0 0 12px rgba(231, 76, 60, 0.3);
   }
+  */
 
   .play-mode-button[data-mode="random"] {
     background: rgba(0,0,0,.1);
@@ -1795,4 +1794,188 @@ body.module-bluetooth .feature-module.bluetooth-module { left: 0; right: 0; top:
     color: #999999;
     opacity: 0.5;
   }
+}
+
+/* ==========================================================================
+   U盘音乐模块 - 按设计稿绝对定位（dp 视作设计像素）
+   ========================================================================== */
+body.module-usb .usb-module .hero {
+  position: absolute;
+  inset: 0;
+  display: block;
+  padding: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+body.module-usb .usb-module .hero .album-container {
+  display: block;
+}
+body.module-usb .usb-module .hero .album-wrap {
+  position: absolute;
+  left: 220px;
+  top: 228px;
+  width: 360px;
+  height: 360px;
+  pointer-events: auto;
+}
+
+body.module-usb .usb-module .transport {
+  position: absolute;
+  inset: 0;
+  display: block;
+  padding: 0;
+  gap: 0;
+}
+body.module-usb .usb-module .transport .track-meta {
+  position: static;
+  display: block;
+}
+body.module-usb .usb-module #usbTrackTitle {
+  position: absolute;
+  left: 70px;
+  top: 680px;
+  width: 198px;
+  height: 30px;
+  max-width: 198px;
+  margin: 0;
+  font-size: 24px;
+  line-height: 30px;
+  text-align: left;
+}
+body.module-usb .usb-module #usbTrackMeta {
+  position: absolute;
+  left: 70px;
+  top: 734px;
+  width: 198px;
+  height: 24px;
+  max-width: 198px;
+  margin: 0;
+  font-size: 16px;
+  line-height: 24px;
+  text-align: left;
+}
+
+body.module-usb .usb-module .progress-row {
+  position: absolute;
+  left: 70px;
+  top: 859px;
+  width: 660.82px;
+  height: 18px;
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) 40px;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+}
+
+/* 音乐律动氛围灯（模拟）：进度条上方的LED灯带，随FFT能量律动 */
+body.module-usb .usb-module .usb-ambient-light {
+  position: absolute;
+  left: 70px;
+  top: 826px;
+  width: 660.82px;
+  height: 22px;
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  padding: 0 4px;
+  pointer-events: none;
+  z-index: 3;
+}
+body.module-usb .usb-module .usb-ambient-light .al-bar {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 3px;
+  border-radius: 2px 2px 0 0;
+  background: rgba(255, 255, 255, 0.08);
+  transition: height 110ms ease, background-color 180ms ease, box-shadow 180ms ease;
+}
+body.module-usb .usb-module .usb-ambient-light.is-active .al-bar {
+  background: var(--al-color, rgba(33, 129, 255, 0.85));
+  box-shadow: 0 0 6px var(--al-color, rgba(33, 129, 255, 0.85));
+}
+
+body.module-usb .usb-module .controls {
+  position: absolute;
+  left: 190px;
+  top: 941px;
+  width: 420px;
+  height: 80px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: center;
+  justify-items: center;
+  gap: 0;
+  margin: 0;
+}
+
+body.module-usb .usb-module #usbFavoriteToggleBtn {
+  position: absolute;
+  left: 70px;
+  top: 963px;
+  width: 36px;
+  height: 36px;
+  margin: 0;
+  font-size: 36px;
+  line-height: 36px;
+}
+
+body.module-usb .usb-module #usbPlayModeBtn {
+  position: absolute;
+  left: 699.12px;
+  top: 963px;
+  width: 36px;
+  height: 36px;
+  margin: 0;
+}
+body.module-usb .usb-module #usbPlayModeBtn .play-mode-glyph {
+  width: 36px;
+  height: 36px;
+}
+body.module-usb .usb-module #usbPlayModeBtn .play-mode-glyph svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+/* U盘音乐 展开的音乐列表/收藏列表：按设计稿固定定位 */
+body.module-usb .drawer-panel {
+  top: 545px;
+  left: 0;
+  right: auto;
+  bottom: auto;
+  width: 800px;
+  height: 605px;
+  transform: translateY(calc(100dvh - 545px));
+}
+body.module-usb .drawer-panel.is-open {
+  transform: translateY(0);
+}
+body.module-usb .drawer-panel.is-hidden {
+  transform: translateY(calc(100dvh - 575px));
+}
+
+body.module-usb .side-actions {
+  position: absolute;
+  inset: 0;
+  display: block;
+  transform: none;
+  gap: 0;
+  pointer-events: none;
+  z-index: 5;
+}
+body.module-usb .side-actions .track-action-button {
+  position: absolute;
+  width: 50px;
+  height: 50px;
+  pointer-events: auto;
+}
+body.module-usb .side-actions #favoritePanelBtn {
+  left: 570.82px;
+  top: 694px;
+}
+body.module-usb .side-actions #playlistPanelBtn {
+  left: 680.82px;
+  top: 694px;
 }

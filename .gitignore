@@ -13,3 +13,19 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# 签名密钥（切勿提交）
+*.jks
+*.keystore
+
+# 构建产物
+*.apk
+/app/release/
+/app/build/
+
+# 日志与崩溃文件
+*.log
+hs_err_pid*.log
+replay_pid*.log
+*.err.log
+*.out.log

@@ -1,3 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- 应用名称 -->
     <string name="app_name">音乐</string>
+
+    <!-- 播放服务通知渠道 -->
+    <string name="playback_channel_name">音乐播放</string>
+    <string name="playback_channel_desc">本地音乐后台播放控制</string>
+
+    <!-- USB设备状态通知渠道 -->
+    <string name="usb_channel_name">USB设备状态</string>
+    <string name="usb_channel_desc">USB设备连接状态通知</string>
+
+    <!-- 通知操作按钮文字 -->
+    <string name="notification_previous">上一曲</string>
+    <string name="notification_play">播放</string>
+    <string name="notification_pause">暂停</string>
+    <string name="notification_next">下一曲</string>
+
+    <!-- 默认播放信息 -->
+    <string name="default_title">音乐</string>
+    <string name="default_artist">本地音乐</string>
+    <string name="usb_artist">USB音乐</string>
+
+    <!-- USB断开通知 -->
+    <string name="usb_disconnected_title">USB设备已断开</string>
+    <string name="usb_disconnected_text">USB设备已断开，音乐播放已停止</string>
+
+    <!-- USB状态消息 -->
+    <string name="usb_msg_connected">USB设备已连接</string>
+    <string name="usb_msg_disconnected">USB设备已断开</string>
+    <string name="usb_msg_reading">USB读取中</string>
+    <string name="usb_msg_scan_complete">USB音乐扫描完成</string>
+    <string name="usb_msg_no_music">USB设备中无音乐文件</string>
+    <string name="usb_msg_not_connected">USB设备未连接</string>
+    <string name="usb_msg_no_permission">缺少存储访问权限，无法读取USB音乐</string>
+    <string name="usb_msg_scanning">USB读取中</string>
+    <string name="usb_msg_cannot_identify">无法识别此设备</string>
+    <string name="usb_root_dir_name">根目录</string>
+
+    <!-- 蓝牙错误消息（用于返回给WebView的提示） -->
+    <string name="bt_err_device_invalid">设备地址无效</string>
+    <string name="bt_err_not_enabled">蓝牙未开启，请先在系统设置中开启蓝牙</string>
+    <string name="bt_err_no_permission">缺少蓝牙连接权限</string>
+    <string name="bt_err_status_cleared">错误状态已清除</string>
+    <string name="bt_err_reconnect_cancelled">已取消自动重连</string>
+    <string name="bt_err_status_detail_failed">状态详情获取失败</string>
+    <string name="bt_err_device_ref_invalid">设备引用已失效</string>
+    <string name="bt_err_reboot">请重新启动应用或重置蓝牙</string>
+    <string name="bt_err_audio_disconnected">蓝牙音频设备已断开</string>
+    <string name="bt_err_audio_link_disconnected">音频链路断开</string>
+    <string name="bt_err_status_check_disconnected">连接状态检查发现断开</string>
+    <string name="bt_err_retry_hint">请靠近蓝牙设备后重试连接</string>
+    <string name="bt_err_grant_permission">请在系统设置中授予蓝牙连接权限，然后重新打开应用</string>
+    <string name="bt_err_confirm_bluetooth">请确认设备已开启蓝牙且在有效范围内，然后重试连接</string>
+    <string name="bt_err_complete_pairing">请在系统蓝牙设置中完成设备配对，然后返回应用重试</string>
+    <string name="bt_err_enable_first">请先开启手机蓝牙并确保设备已配对</string>
+    <string name="bt_err_reconnect_hint">蓝牙连接已断开，系统将尝试自动重连，若多次失败请手动重新连接</string>
+    <string name="bt_err_restart_app">请重启应用以重新初始化蓝牙设备引用</string>
+    <string name="bt_err_unknown_cmd">未知蓝牙媒体控制指令</string>
+    <string name="bt_err_sent_cmd">已发送蓝牙媒体控制指令</string>
+    <string name="bt_err_status_failed">状态生成失败</string>
+
+    <!-- 车辆厂商扩展权限描述 -->
+    <string name="permission_car_vendor_extension_label">车辆厂商扩展权限</string>
 </resources>
